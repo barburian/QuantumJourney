@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qec_bridge"
+version = "0.1.0"
+description = "Qiskit to Stim transpiler for QEC circuits"
+requires-python = ">=3.10"
+dependencies = ["qiskit>=1.0", "stim>=1.13", "pymatching>=2.0", "numpy"]
+
+[project.optional-dependencies]
+sim = ["sinter", "networkx"]
+test = ["pytest"]
+gui = ["streamlit"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
