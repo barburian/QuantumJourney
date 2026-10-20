@@ -29,6 +29,7 @@ class NonCliffordGateError(NotImplementedError):
     """A gate whose (consolidated) unitary is not Clifford; hook for a later non-Clifford router."""
 
     def __init__(self, gate_name, qubits):
+        """Keep the offending gate name and its global qubit indices for the caller."""
         super().__init__(f"gate {gate_name!r} on qubits {qubits} is not Clifford")
         self.gate_name, self.qubits = gate_name, qubits
 
@@ -51,6 +52,7 @@ def synthesize_unitary(U):
 
 
 def _mergeable(node):
+    """True for a non-native, unparameterized gate on <=2 qubits, i.e. one consolidate_blocks may fuse."""
     op = node.op
     return (isinstance(op, Gate) and node.name not in GATES and op.num_qubits <= 2
             and not op.is_parameterized())
@@ -151,6 +153,7 @@ class StimTranspiler:
     """Translates one circuit; keeps qubit_map, clbit_map and the measurement record for inspection."""
 
     def __init__(self, qc_or_dag, coords=None, strip_in_circuit_feedback=False, fold_rounds=False):
+        """Peephole cx/cz, flatten qubits/clbits to ints, emit QUBIT_COORDS then the body, optionally fold rounds."""
         dag = circuit_to_dag(qc_or_dag) if isinstance(qc_or_dag, QuantumCircuit) else qc_or_dag
         dag = peephole_cx_cz_to_cy(dag)
         self.strip = strip_in_circuit_feedback
@@ -170,6 +173,7 @@ class StimTranspiler:
         self.circuit = _fold_rounds(out) if fold_rounds else out
 
     def _emit(self, dag, qmap, cmap, out, tag=""):
+        """Append the stim translation of every op in dag to out; qmap/cmap give global ints, tag the provenance."""
         # stim.Circuit.append fuses consecutive same-name (and same-tag) instructions itself.
         for node in consolidate_blocks(dag).topological_op_nodes():
             qs = [qmap[q] for q in node.qargs]
@@ -197,6 +201,7 @@ class StimTranspiler:
 
     @staticmethod
     def _unitary(op, qs, out, tag):
+        """Synthesize a gate from its matrix onto qubits qs; NonCliffordGateError if it is not Clifford."""
         name = op.label or op.name
         try:
             local = synthesize_unitary(Operator(op).data)
@@ -207,15 +212,18 @@ class StimTranspiler:
 
     @staticmethod
     def _body_maps(node, body, qmap, cmap):
+        """Map a body's (definition / control-flow block) own qubits and clbits to the outer global ints."""
         return ({b: qmap[o] for b, o in zip(body.qubits, node.qargs)},
                 {b: cmap[o] for b, o in zip(body.clbits, node.cargs)})
 
     def _rec(self, c):
+        """stim rec[-k] target of the latest measurement written to flat clbit c."""
         if c not in self.latest_clbit_meas_idx:
             raise ValueError(f"clbit {c} referenced before being measured")
         return stim.target_rec(self.latest_clbit_meas_idx[c] - len(self.measurement_data))
 
     def _feedback(self, node, qmap, cmap, out):
+        """`if clbit == 1: x/y/z` -> classically controlled CX/CY/CZ on rec targets (dropped if strip)."""
         # Qiskit 2.x removed c_if; classical feedback only arrives as IfElseOp.
         op = node.op
         cond = op.condition
@@ -231,6 +239,7 @@ class StimTranspiler:
             out.append(FEEDBACK[inst.operation.name], [rec, bq[inst.qubits[0]]])
 
     def _loop(self, node, qmap, cmap, out):
+        """for_loop -> REPEAT when consecutive iterations are identical, otherwise every iteration unrolled."""
         indexset, loop_param, body = node.op.params
         if loop_param is not None and loop_param in body.parameters:
             raise NotImplementedError("for_loop bodies that use the loop parameter are not supported")
@@ -238,6 +247,7 @@ class StimTranspiler:
         bdag = circuit_to_dag(body)
 
         def iteration():
+            """One body iteration in a fresh circuit; advances the measurement record."""
             c = stim.Circuit()
             self._emit(bdag, bq, bc, c)
             return c

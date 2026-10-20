@@ -21,6 +21,7 @@ class QECResult:
     report: dict = None
 
     def to_networkx(self):
+        """The matching graph as a networkx graph; ValueError for a BP-OSD decoder."""
         if not isinstance(self.matcher, pymatching.Matching):
             raise ValueError("the DEM has hyperedges (decoded with BP-OSD), so there is no matching graph to export")
         return self.matcher.to_networkx()
@@ -43,10 +44,12 @@ class StimTranslationPass(AnalysisPass):
     """Stores property_set["stim_circuit"] (noisy if noise) and property_set["stim_dem"]."""
 
     def __init__(self, detectors=None, observables=None, noise=None):
+        """Keep the annotation and noise settings passed on to transpile_to_stim / add_noise."""
         super().__init__()
         self.detectors, self.observables, self.noise = detectors, observables, noise
 
     def run(self, dag):
+        """Translate dag, add noise if set, and store the circuit and its DEM in the property set."""
         circuit = transpile_to_stim(dag, detectors=self.detectors, observables=self.observables)
         if self.noise is not None:
             circuit = add_noise(circuit, self.noise)

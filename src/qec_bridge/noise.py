@@ -27,17 +27,21 @@ class UnityQNoiseProfile:
 
     @property
     def p_1q(self):
+        """DEPOLARIZE1 probability matching the 1q average infidelity (1 - F = 2p/3)."""
         return 1.5 * (1 - self.f_1q)
 
     @property
     def p_2q(self):
+        """DEPOLARIZE2 probability matching the 2q average infidelity (1 - F = 4p/5)."""
         return 1.25 * (1 - self.f_2q)
 
     @property
     def p_meas(self):
+        """Readout bit-flip probability."""
         return 1 - self.f_meas
 
     def channel(self, gate, n):
+        """(stim channel, args) to put after an n-qubit gate, or None for a noiseless gate."""
         if self.gate_channels is not None:
             return self.gate_channels.get(gate)
         return ("DEPOLARIZE1", [self.p_1q]) if n == 1 else ("DEPOLARIZE2", [self.p_2q])
@@ -107,10 +111,12 @@ def _pieces(inst, p):
 
 
 def _noisy(circuit, p, n):
+    """Recursive core of add_noise: ASAP-schedule ops into layers and emit them noisy; n qubits can idle."""
     out, layers = stim.Circuit(), []
     free, floor, rec = {}, 0, 0
 
     def flush():
+        """Emit and clear the pending layers (at REPEAT boundaries and at the end)."""
         for layer in layers:
             _emit(layer, p, n, out)
         layers.clear()
@@ -138,6 +144,7 @@ def _noisy(circuit, p, n):
 
 
 def _emit(layer, p, n, out):
+    """One layer: readout flips, the ops, gate/reset noise, idle DEPOLARIZE1 for each qubit's slack, then TICK."""
     busy = {q: piece[4] for piece in layer for q in piece[3]}
     length = max(busy.values(), default=0)
     for name, ts, *_ in layer:

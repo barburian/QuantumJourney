@@ -13,6 +13,7 @@ class DetectorCompletenessWarning(UserWarning):
 
 
 def _clbits(entry):
+    """Clbits of a detector/observable entry, given either as a plain list or a dict."""
     return entry["clbits"] if isinstance(entry, dict) else entry
 
 
@@ -22,6 +23,7 @@ def _xy(qcoords, q):
 
 
 def _append(circuit, name, rec_idx, args):
+    """Append DETECTOR/OBSERVABLE_INCLUDE over absolute measurement indices, converted to rec[-k] targets."""
     n = circuit.num_measurements
     circuit.append(name, [stim.target_rec(i - n) for i in sorted(rec_idx)], args)
 
@@ -34,6 +36,7 @@ def annotate(t, detectors=None, observables=None):
     "qubits" (absolute, i.e. SHIFT_COORDS are undone). detectors=None infers them (see infer_detectors).
     """
     def rec(entry):
+        """Measurement indices of an entry; a measurement listed twice cancels (XOR)."""
         idx = set()
         for b in _clbits(entry):
             i = t.clbit_map[b] if isinstance(b, Clbit) else b

@@ -51,6 +51,7 @@ def _decoder(dem_text):
 
 
 def _bposd(dem):
+    """BP-OSD decoder with pymatching's decode_batch interface, for hyperedge DEMs; needs beliefmatching + ldpc."""
     missing = [m for m in ("beliefmatching", "ldpc") if importlib.util.find_spec(m) is None]
     if missing:
         raise ImportError(f"the DEM has undecomposable hyperedges; decoding it needs {' and '.join(missing)} "
@@ -68,6 +69,7 @@ def _bposd(dem):
 
 
 def _rates(decoder, dets, obs):
+    """Decode detection events and compare with the true observable flips -> logical error rates."""
     errors = decoder.decode_batch(dets).astype(bool) != obs
     return {"shots": len(obs), "per_observable": errors.mean(axis=0).tolist(), "any": float(errors.any(axis=1).mean())}
 
@@ -101,6 +103,7 @@ def _measurements(circuit, qc, counts_or_memory):
 
 
 def _detection_events(circuit, qc, counts_or_memory):
+    """Qiskit results -> (detection events, observable flips) via stim's measurement-to-detection converter."""
     m = _measurements(circuit, qc, counts_or_memory)
     return circuit.compile_m2d_converter().convert(measurements=m, separate_observables=True)
 
