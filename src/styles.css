@@ -157,8 +157,50 @@ label.chk {
 
 .ln {
   fill: none;
-  stroke: var(--wire);
-  stroke-width: 3;
+  stroke: var(--wc, var(--wire));
+  stroke-width: var(--ww, 3px);
+}
+
+/* Live wires: soft pulsing halo on entangled qubits, dots flowing toward the next block. */
+.glow {
+  fill: none;
+  stroke: var(--wc, var(--wire));
+  stroke-width: calc(var(--ww, 3px) + 10px);
+  opacity: 0.35;
+  filter: blur(4px);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.flow {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.8;
+  stroke-width: var(--ww, 3px);
+  stroke-linecap: round;
+  stroke-dasharray: 0 18;
+  animation: flow 0.9s linear infinite;
+}
+
+@keyframes flow {
+  from {
+    stroke-dashoffset: 18;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.12;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow,
+  .glow {
+    animation: none;
+  }
 }
 
 .hit {
@@ -347,6 +389,23 @@ label.chk {
   background: var(--wire);
 }
 
+.pin.ent {
+  animation: pin-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes pin-glow {
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--wire) 35%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pin.ent {
+    animation: none;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--wire) 35%, transparent);
+  }
+}
+
 .pr,
 .mx {
   padding: 0 8px 8px;
@@ -394,6 +453,85 @@ input[type="number"] {
 
 .node input[type="number"] {
   background: var(--panel);
+}
+
+/* ---------- probe ---------- */
+
+.node.probe {
+  width: 172px;
+}
+
+.pb {
+  display: grid;
+  gap: 6px;
+  padding: 0 8px 8px;
+  color: var(--mut);
+  font-size: 12px;
+}
+
+.bloch {
+  width: 120px;
+  height: 120px;
+  justify-self: center;
+  overflow: visible;
+}
+
+.bloch .sphere {
+  fill: var(--bg);
+  stroke: var(--line);
+}
+
+.bloch .eq {
+  fill: none;
+  stroke: var(--line);
+  stroke-dasharray: 3 3;
+}
+
+.bloch .ax {
+  stroke: var(--mut);
+  stroke-width: 0.6;
+  opacity: 0.6;
+}
+
+.bloch .drop {
+  stroke: var(--mut);
+  stroke-dasharray: 2 2;
+}
+
+.bloch .vec {
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.bloch text {
+  fill: var(--mut);
+  font-size: 9px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.pv {
+  white-space: pre-line;
+  color: var(--ink);
+}
+
+.amps {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 36px;
+  border-bottom: 1px solid var(--line);
+}
+
+.amps:empty {
+  display: none;
+}
+
+.amps i {
+  flex: 1;
+  min-width: 0;
+  background: var(--c);
+  border-radius: 1px 1px 0 0;
 }
 
 /* ---------- library ---------- */

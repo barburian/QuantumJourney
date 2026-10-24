@@ -8,6 +8,10 @@ simulator.
 - Initial states |0⟩, |1⟩, |+⟩, |−⟩ (click the state badge on a qubit)
 - Measurements can **peek** (read P(1) without disturbing the state) or **collapse** (branch the
   simulation, so mid-circuit measurement is exact)
+- **Probes** show a qubit's Bloch sphere, P(1), θ/φ and the phase-coloured state vector at any
+  point; they pass the state through unchanged
+- **Live wires** show the state they carry: thickness = P(1), colour = phase (blue at 0),
+  a pulsing glow = entangled with other qubits. Hover a wire for details.
 - Example circuits (Bell, GHZ, Grover, QFT, …) and a library of your own, saved in the browser
 - Up to 8 qubits
 
@@ -35,6 +39,8 @@ The build uses relative paths, so `dist/` can be hosted from any folder (e.g. Gi
 - **Click** a gate in the toolbar to chain it after the selected (or last added) block. With
   *Auto-connect* on it is wired in automatically. **Drag** a gate onto the canvas to place it freely.
 - **Drag from pin to pin** to wire blocks; click a wire to delete it.
+- **Drop** a Probe (or any single-qubit gate) **onto a wire** to splice it in. Clicking *Probe*
+  with a connected block selected probes that block's output.
 - **Drag** a block's header to move it; **Delete**/**Backspace** or the × removes the selected block.
 - **Drag the background** to pan, **scroll** to zoom, *Fit* to frame the circuit.
 - Results are shown in the basis |q(n−1)…q0⟩ (q0 is the rightmost bit).
@@ -53,7 +59,9 @@ src/
   circuit.ts          wiring rules (links, loop prevention, qubit tracing)
   nodes.ts            creating, placing, chaining and removing blocks
   render.ts           re-simulate and refresh the view
-  wires.ts            wire drawing
+  wires.ts            wire drawing, including live state styling
+  probe.ts            probe display (Bloch sphere, amplitude chart)
+  phase.ts            phase → colour
   viewport.ts         pan and zoom
   results.ts          probability table
   library.ts          examples list and saved circuits (localStorage)

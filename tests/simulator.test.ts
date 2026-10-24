@@ -64,6 +64,71 @@ describe('simulate', () => {
   });
 });
 
+const round = (v: number) => Math.round(v * 1e9) / 1e9 + 0; // + 0 turns -0 into 0
+const blochOf = (r: ReturnType<typeof run>, pin: string) => r.pins.get(pin)?.bloch.map(round);
+
+describe('qubit states', () => {
+  it('reports the Bloch vector leaving every pin', () => {
+    // Node ids: 1 = qubit, 2 = H, 3 = S.
+    const r = run(1, [['H', 0], ['S', 0]]);
+    expect(blochOf(r, '1:0')).toEqual([0, 0, 1]);
+    expect(blochOf(r, '2:0')).toEqual([1, 0, 0]);
+    expect(blochOf(r, '3:0')).toEqual([0, 1, 0]);
+    expect(round(r.pins.get('2:0')!.p1)).toBe(0.5);
+  });
+
+  it('|−⟩ points along −x', () => {
+    expect(blochOf(run(1, [], [3]), '1:0')).toEqual([-1, 0, 0]);
+  });
+
+  it('flags entanglement after a CNOT but not before', () => {
+    // Node ids: 1, 2 = qubits, 3 = H, 4 = CNOT.
+    const r = run(2, [['H', 0], ['CNOT', 0, 1]]);
+    expect(r.pins.get('3:0')!.entangled).toBe(false);
+    expect(r.pins.get('4:0')!.entangled).toBe(true);
+    expect(r.pins.get('4:1')!.entangled).toBe(true);
+    expect(blochOf(r, '4:0')).toEqual([0, 0, 0]);
+  });
+
+  it('product states of several qubits are not entangled', () => {
+    const r = runExample('Uniform superposition');
+    for (const s of r.pins.values()) expect(s.entangled).toBe(false);
+  });
+
+  it('a collapsed qubit is mixed but not entangled', () => {
+    // Node ids: 1 = qubit, 2 = H, 3 = M (collapse).
+    const r = run(1, [['H', 0], ['M', 0, 1]]);
+    expect(r.pins.get('3:0')!.entangled).toBe(false);
+    expect(blochOf(r, '3:0')).toEqual([0, 0, 0]);
+  });
+});
+
+describe('probes', () => {
+  it('pass the state through unchanged', () => {
+    const plain = run(2, [['H', 0], ['CNOT', 0, 1]]);
+    const probed = run(2, [['H', 0], ['Probe', 0], ['CNOT', 0, 1]]);
+    expect(rounded(probed.probabilities)).toEqual(rounded(plain.probabilities));
+  });
+
+  it('read the qubit and the full state vector', () => {
+    // Node ids: 1, 2 = qubits, 3 = X, 4 = H, 5 = Probe.
+    const r = run(2, [['X', 1], ['H', 0], ['Probe', 0]]);
+    const probe = r.probes.get(5)!;
+    expect(probe.qubit).toBe(0);
+    expect(probe.bloch.map(round)).toEqual([1, 0, 0]);
+    expect(probe.amplitudes!.map(({ re, im }) => [round(re), round(im)])).toEqual([
+      [0, 0], [0, 0], [round(Math.SQRT1_2), 0], [round(Math.SQRT1_2), 0],
+    ]);
+  });
+
+  it('give no state vector after a collapse', () => {
+    // Node ids: 1 = qubit, 2 = H, 3 = M (collapse), 4 = Probe.
+    const probe = run(1, [['H', 0], ['M', 0, 1], ['Probe', 0]]).probes.get(4)!;
+    expect(probe.branches).toBe(2);
+    expect(probe.amplitudes).toBeUndefined();
+  });
+});
+
 describe('examples', () => {
   it('Bell state', () => {
     expect(rounded(runExample('Bell state').probabilities)).toEqual([0.5, 0, 0, 0.5]);

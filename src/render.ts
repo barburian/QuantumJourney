@@ -1,5 +1,6 @@
 import { $ } from './dom';
 import { gateLabel, INITIAL_STATES } from './gates';
+import { renderProbe } from './probe';
 import { renderResults } from './results';
 import { simulate } from './simulator';
 import { editor } from './state';
@@ -23,8 +24,11 @@ export function refresh(): void {
       $('.bar i', el).style.width = `${p1 == null ? 0 : p1 * 100}%`;
       $('.md', el).textContent = node.p ? 'Collapse' : 'Peek';
     }
+
+    if (node.type === 'Probe') renderProbe(el, result.probes.get(node.id));
   }
 
+  editor.sim = result;
   renderResults(result);
   drawWires();
 }

@@ -14,6 +14,23 @@ const R = Math.SQRT1_2;
 
 export type SimNode = Pick<NodeData, 'id' | 'type' | 'p' | 'init'>;
 
+/** The state of one qubit at some point in the circuit. */
+export interface QubitState {
+  /** Index of the qubit. */
+  qubit: number;
+  /** Bloch vector [x, y, z]; shorter than 1 when the qubit is entangled or mixed. */
+  bloch: [x: number, y: number, z: number];
+  p1: number;
+  /** True if the qubit is entangled with others (in any measurement branch). */
+  entangled: boolean;
+}
+
+export interface ProbeReading extends QubitState {
+  /** The full state vector at the probe; only when there is a single measurement branch. */
+  amplitudes?: { re: number; im: number }[];
+  branches: number;
+}
+
 export interface SimResult {
   /** Number of qubits in the circuit. */
   qubits: number;
@@ -21,6 +38,10 @@ export interface SimResult {
   done: Set<number>;
   /** P(1) for each measurement node that ran. */
   measurements: Map<number, number>;
+  /** State of the qubit leaving each output pin that was reached, keyed "nodeId:outputIndex". */
+  pins: Map<string, QubitState>;
+  /** Reading of each probe node that was reached. */
+  probes: Map<number, ProbeReading>;
   /** Final probability per basis state; absent when the circuit can't be simulated. */
   probabilities?: number[];
   /** Number of measurement branches at the end. */
@@ -102,6 +123,32 @@ function probabilityOfOne(b: Branch, q: number, size: number): number {
   return sum;
 }
 
+/** Reduced state of qubit q, averaged over the measurement branches. */
+function qubitState(branches: Branch[], q: number, size: number): QubitState {
+  const bit = 1 << q;
+  let x = 0, y = 0, z = 0, entangled = false;
+  for (const b of branches) {
+    // Single-qubit density matrix of this branch: ρ00, ρ11 and ρ01 = Σ a_i·conj(a_j).
+    let r00 = 0, r11 = 0, cRe = 0, cIm = 0;
+    for (let i = 0; i < size; i++) {
+      if (i & bit) continue;
+      const j = i | bit;
+      const ar = b.re[i], ai = b.im[i], br = b.re[j], bi = b.im[j];
+      r00 += ar * ar + ai * ai;
+      r11 += br * br + bi * bi;
+      cRe += ar * br + ai * bi;
+      cIm += ai * br - ar * bi;
+    }
+    const bx = 2 * cRe, by = -2 * cIm, bz = r00 - r11;
+    // A pure global state whose reduced state is mixed is entangled.
+    if (b.weight > 1e-9 && Math.hypot(bx, by, bz) < 1 - 1e-6) entangled = true;
+    x += b.weight * bx;
+    y += b.weight * by;
+    z += b.weight * bz;
+  }
+  return { qubit: q, bloch: [x, y, z], p1: (1 - z) / 2, entangled };
+}
+
 /** Splits every branch into its |0⟩ and |1⟩ outcomes for qubit q, renormalised. */
 function collapse(branches: Branch[], q: number, size: number): Branch[] {
   const next: Branch[] = [];
@@ -133,7 +180,9 @@ export function simulate(nodes: readonly SimNode[], wires: readonly Wire[]): Sim
   const n = qubitNodes.length;
   const done = new Set(qubitNodes.map((q) => q.id));
   const measurements = new Map<number, number>();
-  if (!n || n > MAX_QUBITS) return { qubits: n, done, measurements };
+  const pins = new Map<string, QubitState>();
+  const probes = new Map<number, ProbeReading>();
+  if (!n || n > MAX_QUBITS) return { qubits: n, done, measurements, pins, probes };
 
   const size = 1 << n;
   let branches: Branch[] = [{ weight: 1, re: new Float64Array(size), im: new Float64Array(size) }];
@@ -145,6 +194,7 @@ export function simulate(nodes: readonly SimNode[], wires: readonly Wire[]): Sim
     carried.set(`${q.id}:0`, i);
     for (const t of INITIAL_STATE_GATES[q.init || 0]) applyGate(t, 0, [i], branches[0].re, branches[0].im, n);
   });
+  qubitNodes.forEach((q, i) => pins.set(`${q.id}:0`, qubitState(branches, i, size)));
 
   let progress = true;
   while (progress) {
@@ -164,11 +214,21 @@ export function simulate(nodes: readonly SimNode[], wires: readonly Wire[]): Sim
         for (const b of branches) p1 += b.weight * probabilityOfOne(b, q, size);
         measurements.set(node.id, p1);
         if (node.p && branches.length <= MAX_BRANCHES) branches = collapse(branches, q, size);
+      } else if (node.type === 'Probe') {
+        const single = branches.length === 1 ? branches[0] : null;
+        probes.set(node.id, {
+          ...qubitState(branches, qs[0], size),
+          amplitudes: single ? Array.from(single.re, (re, i) => ({ re, im: single.im[i] })) : undefined,
+          branches: branches.length,
+        });
       } else {
         for (const b of branches) applyGate(node.type, node.p, qs, b.re, b.im, n);
       }
 
-      qs.forEach((q, i) => carried.set(`${node.id}:${i}`, q));
+      qs.forEach((q, i) => {
+        carried.set(`${node.id}:${i}`, q);
+        pins.set(`${node.id}:${i}`, qubitState(branches, q, size));
+      });
       done.add(node.id);
       progress = true;
     }
@@ -178,5 +238,5 @@ export function simulate(nodes: readonly SimNode[], wires: readonly Wire[]): Sim
   for (const b of branches) {
     for (let i = 0; i < size; i++) probabilities[i] += b.weight * (b.re[i] * b.re[i] + b.im[i] * b.im[i]);
   }
-  return { qubits: n, done, measurements, probabilities, branches: branches.length };
+  return { qubits: n, done, measurements, pins, probes, probabilities, branches: branches.length };
 }

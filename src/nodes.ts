@@ -3,7 +3,7 @@ import { world } from './dom';
 import { GATES } from './gates';
 import { refresh } from './render';
 import { editor } from './state';
-import type { CircuitNode, GateDef, GateType, NodeData } from './types';
+import type { CircuitNode, GateDef, GateType, NodeData, Point } from './types';
 import { centerOf } from './viewport';
 import { pinElement } from './wires';
 
@@ -45,6 +45,11 @@ function nodeHtml(node: NodeData, def: GateDef): string {
       '<div class="mx"><span class="bar"><i></i></span><span class="m"></span>' +
       '<button class="md" title="Peek reads the state; Collapse measures it"></button></div>';
   }
+  if (def.probe) {
+    html +=
+      '<div class="pb"><svg class="bloch" viewBox="-60 -60 120 120"></svg><span class="pv"></span>' +
+      '<div class="amps"></div><span class="pa"></span></div>';
+  }
   return html;
 }
 
@@ -70,7 +75,7 @@ export function addNode(type: GateType, x: number, y: number, opts: { p?: number
     init: opts.init || 0,
     el,
   };
-  el.className = `node ${def.kind === 'full' ? 'full' : `t ${def.kind}`}`;
+  el.className = `node ${def.kind === 'full' ? 'full' : `t ${def.kind}`}${def.probe ? ' probe' : ''}`;
   el.dataset.id = String(node.id);
   el.innerHTML = nodeHtml(node, def) + '<b class="x" title="Delete">×</b>';
   world.appendChild(el);
@@ -121,16 +126,47 @@ function avoidOverlap(node: CircuitNode): void {
 }
 
 /**
+ * Splits wire `index` with a new single-qubit block. With `at` (world
+ * coordinates) the block's input sits there; otherwise it goes between the
+ * wire's ends. Either way it is moved down if it overlaps something.
+ */
+export function insertOnWire(type: GateType, index: number, at?: Point): void {
+  const w = editor.wires[index];
+  let node: CircuitNode;
+  if (at) {
+    node = addNode(type, at[0], 0);
+    alignInput(node, at[1]);
+  } else {
+    const a = centerOf(pinElement(w.a, 'o', w.ai));
+    const b = centerOf(pinElement(w.b, 'i', w.bi));
+    node = addNode(type, 0, 0);
+    node.x = Math.max(0, (a[0] + b[0]) / 2 - node.el.offsetWidth / 2);
+    alignInput(node, (a[1] + b[1]) / 2);
+  }
+  avoidOverlap(node);
+  editor.wires.splice(index, 1, { a: w.a, ai: w.ai, b: node.id, bi: 0 }, { a: node.id, ai: 0, b: w.b, bi: w.bi });
+  select(node);
+  editor.last = node;
+  refresh();
+}
+
+/**
  * Adds a gate from the toolbar. Without a drop position it goes to the right
  * of the selected (or last added) block; with auto-connect on it is wired to
  * that block's first free output, and extra inputs of multi-qubit gates are
- * wired to the most recent free outputs carrying other qubits.
+ * wired to the most recent free outputs carrying other qubits. A probe on a
+ * block whose outputs are all wired is inserted into its first outgoing wire.
  */
 export function chain(type: GateType, x?: number, y?: number): void {
   const def = GATES[type];
   const prev = editor.selected || editor.last;
   const pin = editor.autoConnect && prev && def.ins.length ? freeOutput(prev) : -1;
   let node: CircuitNode;
+
+  if (def.probe && x == null && editor.autoConnect && prev && pin < 0) {
+    const wire = editor.wires.findIndex((w) => w.a === prev.id);
+    if (wire >= 0) return insertOnWire(type, wire);
+  }
 
   if (type === 'Q') {
     const ys = editor.nodes.filter((m) => m.type === 'Q').map((m) => m.y);

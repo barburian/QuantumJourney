@@ -5,6 +5,7 @@ const PURPLE = '#6b4df0';
 const ORANGE = '#c9690a';
 const BLUE = '#2f6fed';
 const PINK = '#c2255c';
+const TEAL = '#0e7490';
 
 const single = (): GateDef => ({ color: PURPLE, kind: 'sq', ins: [''], outs: [''] });
 const rotation = (): GateDef => ({ color: ORANGE, kind: 'rot', param: true, ins: [''], outs: [''] });
@@ -33,6 +34,7 @@ export const GATES: Record<GateType, GateDef> = {
   SWAP: twoQubit('a', 'b'),
   CP: twoQubit('control', 'target', { param: true }),
   M: { color: PINK, kind: 'full', ins: [''], outs: [''], measure: true },
+  Probe: { color: TEAL, kind: 'full', ins: [''], outs: [''], probe: true },
 };
 
 export const isGateType = (t: string): t is GateType => Object.hasOwn(GATES, t);
@@ -42,7 +44,7 @@ export const PALETTE_GROUPS: [title: string, gates: GateType[]][] = [
   ['Gates', ['H', 'X', 'Y', 'Z', 'S', 'T']],
   ['Rotations', ['Rx', 'Ry', 'Rz', 'P']],
   ['Two-qubit', ['CNOT', 'CZ', 'SWAP', 'CP']],
-  ['Readout', ['M']],
+  ['Readout', ['M', 'Probe']],
 ];
 
 const LABELS: Partial<Record<GateType, string>> = { Q: 'Qubit', M: 'Measure' };

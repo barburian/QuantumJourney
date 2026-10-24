@@ -1,8 +1,8 @@
 /* Pointer, keyboard and drag-and-drop handling on the canvas. */
 import { link } from './circuit';
 import { canvas } from './dom';
-import { isGateType } from './gates';
-import { chain, removeNode, select, setPosition } from './nodes';
+import { GATES, isGateType } from './gates';
+import { chain, insertOnWire, removeNode, select, setPosition } from './nodes';
 import { refresh } from './render';
 import { editor, nodeById } from './state';
 import type { CircuitNode, PinRef } from './types';
@@ -116,6 +116,12 @@ function onDrop(e: DragEvent): void {
   const t = e.dataTransfer?.getData('text/plain') ?? '';
   if (!isGateType(t)) return;
   const [x, y] = toWorld(e);
+  // Single-qubit blocks dropped on a wire are spliced into it.
+  const wire = document.elementFromPoint(e.clientX, e.clientY)?.closest<SVGGElement>('.w');
+  if (wire && GATES[t].ins.length === 1 && GATES[t].outs.length === 1) {
+    insertOnWire(t, Number(wire.dataset.k), [Math.max(0, x - 30), y]);
+    return;
+  }
   chain(t, Math.max(0, x - 30), Math.max(0, y - 22));
 }
 

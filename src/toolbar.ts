@@ -19,6 +19,8 @@ export function initToolbar(): void {
   palette.innerHTML =
     groups +
     '<div class="grp"><label class="chk"><input type="checkbox" id="auto" checked>Auto-connect</label>' +
+    '<label class="chk" title="Wire thickness shows P(1), colour shows phase, a glow marks entanglement">' +
+    '<input type="checkbox" id="live" checked>Live wires</label>' +
     '<button class="p" id="zo" title="Zoom out">−</button><button class="p" id="zi" title="Zoom in">+</button>' +
     '<button class="p" id="ft">Fit</button><button class="p" id="clr">Clear</button></div>';
 
@@ -35,6 +37,13 @@ export function initToolbar(): void {
   const auto = $<HTMLInputElement>('#auto');
   editor.autoConnect = auto.checked;
   auto.addEventListener('change', () => (editor.autoConnect = auto.checked));
+
+  const live = $<HTMLInputElement>('#live');
+  editor.liveWires = live.checked;
+  live.addEventListener('change', () => {
+    editor.liveWires = live.checked;
+    drawWires();
+  });
 
   $('#zi').addEventListener('click', () => zoomAt(...canvasCenter(), 1.25));
   $('#zo').addEventListener('click', () => zoomAt(...canvasCenter(), 0.8));

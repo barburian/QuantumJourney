@@ -3,7 +3,7 @@ export type GateType =
   | 'H' | 'X' | 'Y' | 'Z' | 'S' | 'T'
   | 'Rx' | 'Ry' | 'Rz' | 'P'
   | 'CNOT' | 'CZ' | 'SWAP' | 'CP'
-  | 'M';
+  | 'M' | 'Probe';
 
 /** How a block is drawn: qubit source, square tile, rotation tile, or full card with labelled rows. */
 export type GateKind = 'q' | 'sq' | 'rot' | 'full';
@@ -19,6 +19,8 @@ export interface GateDef {
   param?: boolean;
   /** Measurement block. */
   measure?: boolean;
+  /** Probe block: passes its qubit through unchanged and displays its state. */
+  probe?: boolean;
 }
 
 /**
