@@ -12,7 +12,12 @@ simulator.
   point; they pass the state through unchanged
 - **Live wires** show the state they carry: thickness = P(1), colour = phase (blue at 0),
   a pulsing glow = entangled with other qubits. Hover a wire for details.
-- Example circuits (Bell, GHZ, Grover, QFT, …) and a library of your own, saved in the browser
+- **Custom gates**: collapse any selection into a reusable block, open it to edit it, and make
+  its inverse (†) or a controlled version (C) with one click. Custom gates can contain each other.
+- **Matrices**: the ⊞ button on any gate, custom ones included, shows its unitary matrix, updated
+  live as you edit
+- Example circuits (Bell, GHZ, Deutsch, Deutsch–Jozsa, Grover, QFT, mid-circuit measurement) and a
+  library of your own circuits and gates, saved in the browser
 - Up to 8 qubits
 
 ## Getting started
@@ -42,6 +47,21 @@ The build uses relative paths, so `dist/` can be hosted from any folder (e.g. Gi
 - **Drop** a Probe (or any single-qubit gate) **onto a wire** to splice it in. Clicking *Probe*
   with a connected block selected probes that block's output.
 - **Drag** a block's header to move it; **Delete**/**Backspace** or the × removes the selected block.
+- **Shift-click** blocks or **shift-drag** a box to select several; dragging one moves them all.
+- **Make gate** (Ctrl+G) turns the selection into a custom gate. Each qubit passing through the
+  selection becomes a lane, ordered top to bottom; the gate appears under *Custom* in the toolbar.
+- On a custom gate, **†** runs it inverted and **C** adds a control pin (not available for gates
+  that measure). **Double-click** it to edit its subcircuit, between its *Inputs* and *Outputs*
+  blocks; the results there assume all inputs start in |0⟩. Changes apply to every copy of the
+  gate. **Back** or **Esc** returns.
+- Hover or select a gate and press **⊞** (top right) to see its matrix; cell colour is the phase.
+  *Pin 0 last* matches the results panel (pin 0 is the rightmost bit); *Pin 0 first* is the usual
+  textbook order. Up to 4 qubits show numbers, 5–6 qubits colours only (hover for values).
+- Custom gates are stored automatically and listed under **My gates** in the library: click one to
+  edit it, or × to delete it (along with its copies; you're asked first). Saved circuits keep their
+  own copy of the gates they use.
+- The **Deutsch** and **Deutsch–Jozsa** examples keep their oracle in a custom gate. Open it to
+  change f: with no CNOTs inside (constant f) the inputs measure all 0.
 - **Drag the background** to pan, **scroll** to zoom, *Fit* to frame the circuit.
 - Results are shown in the basis |q(n−1)…q0⟩ (q0 is the rightmost bit).
 
@@ -54,6 +74,13 @@ src/
   types.ts            shared types
   gates.ts            gate definitions, palette groups, initial states
   simulator.ts        state-vector simulator (no DOM; unit tested)
+  custom.ts           custom gates: grouping, inverse, control, expansion (no DOM; unit tested)
+  scope.ts            making, editing and deleting custom gates
+  gateStore.ts        storing custom gates in the browser
+  matrix.ts           a block's unitary matrix (no DOM; unit tested)
+  matrixView.ts       the matrix panel
+  palette.ts          gate buttons, including custom gates
+  snapshot.ts         circuit ⇄ plain data
   examples.ts         example circuits and op-list → circuit graph
   state.ts            editor state (nodes, wires, selection)
   circuit.ts          wiring rules (links, loop prevention, qubit tracing)
@@ -70,6 +97,8 @@ src/
   styles.css
 tests/
   simulator.test.ts
+  custom.test.ts
+  matrix.test.ts
 ```
 
 `quantum-blueprints v1.html` is the original single-file prototype this project was built from.

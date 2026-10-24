@@ -12,7 +12,13 @@ export const MAX_QUBITS = 8;
 const MAX_BRANCHES = 128;
 const R = Math.SQRT1_2;
 
-export type SimNode = Pick<NodeData, 'id' | 'type' | 'p' | 'init'>;
+/**
+ * A block to simulate. Its first `arity` pins (by default the gate's own
+ * input count) are targets; the next `controls` pins are control qubits: the
+ * gate only acts where all of them are |1⟩. In and Out blocks pass their
+ * qubits through unchanged.
+ */
+export type SimNode = Pick<NodeData, 'id' | 'type' | 'p' | 'init'> & { arity?: number; controls?: number };
 
 /** The state of one qubit at some point in the circuit. */
 export interface QubitState {
@@ -46,6 +52,8 @@ export interface SimResult {
   probabilities?: number[];
   /** Number of measurement branches at the end. */
   branches?: number;
+  /** Final state vector; only when there is a single measurement branch. */
+  state?: { re: Float64Array; im: Float64Array };
 }
 
 interface Branch {
@@ -76,14 +84,17 @@ function gateMatrix(type: GateType, p: number): Matrix {
   }
 }
 
-function applyGate(type: GateType, p: number, q: number[], re: Float64Array, im: Float64Array, n: number): void {
+/** Applies a gate to qubits `q`, only on basis states where every bit of `controls` is set. */
+function applyGate(
+  type: GateType, p: number, q: number[], re: Float64Array, im: Float64Array, n: number, controls = 0,
+): void {
   const size = 1 << n;
 
   if (GATES[type].ins.length === 1) {
     const m = gateMatrix(type, p);
     const bit = 1 << q[0];
     for (let i = 0; i < size; i++) {
-      if (i & bit) continue;
+      if (i & bit || (i & controls) !== controls) continue;
       const j = i | bit;
       const ar = re[i], ai = im[i], br = re[j], bi = im[j];
       re[i] = m[0][0] * ar - m[0][1] * ai + m[1][0] * br - m[1][1] * bi;
@@ -97,6 +108,7 @@ function applyGate(type: GateType, p: number, q: number[], re: Float64Array, im:
   const a = 1 << q[0];
   const b = 1 << q[1];
   for (let i = 0; i < size; i++) {
+    if ((i & controls) !== controls) continue;
     if (type === 'CNOT' && i & a && !(i & b)) {
       const j = i | b;
       [re[i], re[j]] = [re[j], re[i]];
@@ -201,15 +213,21 @@ export function simulate(nodes: readonly SimNode[], wires: readonly Wire[]): Sim
     progress = false;
     for (const node of nodes) {
       if (done.has(node.id)) continue;
-      const inputs = GATES[node.type].ins.map((_, i) => {
+      const arity = node.arity ?? GATES[node.type].ins.length;
+      const inputs = Array.from({ length: arity + (node.controls ?? 0) }, (_, i) => {
         const w = wires.find((w) => w.b === node.id && w.bi === i);
         return w ? carried.get(`${w.a}:${w.ai}`) : undefined;
       });
       if (inputs.some((q) => q === undefined) || new Set(inputs).size < inputs.length) continue;
       const qs = inputs as number[];
+      const targets = qs.slice(0, arity);
+      const controlMask = qs.slice(arity).reduce((mask, q) => mask | (1 << q), 0);
 
-      if (node.type === 'M') {
-        const q = qs[0];
+      if (node.type === 'In' || node.type === 'Out') {
+        // Boundary of a custom gate: nothing to apply.
+      } else if (node.type === 'M') {
+        // Measurements ignore controls; controlled custom gates can't contain them.
+        const q = targets[0];
         let p1 = 0;
         for (const b of branches) p1 += b.weight * probabilityOfOne(b, q, size);
         measurements.set(node.id, p1);
@@ -217,12 +235,12 @@ export function simulate(nodes: readonly SimNode[], wires: readonly Wire[]): Sim
       } else if (node.type === 'Probe') {
         const single = branches.length === 1 ? branches[0] : null;
         probes.set(node.id, {
-          ...qubitState(branches, qs[0], size),
+          ...qubitState(branches, targets[0], size),
           amplitudes: single ? Array.from(single.re, (re, i) => ({ re, im: single.im[i] })) : undefined,
           branches: branches.length,
         });
       } else {
-        for (const b of branches) applyGate(node.type, node.p, qs, b.re, b.im, n);
+        for (const b of branches) applyGate(node.type, node.p, targets, b.re, b.im, n, controlMask);
       }
 
       qs.forEach((q, i) => {
@@ -238,5 +256,6 @@ export function simulate(nodes: readonly SimNode[], wires: readonly Wire[]): Sim
   for (const b of branches) {
     for (let i = 0; i < size; i++) probabilities[i] += b.weight * (b.re[i] * b.re[i] + b.im[i] * b.im[i]);
   }
-  return { qubits: n, done, measurements, pins, probes, probabilities, branches: branches.length };
+  const state = branches.length === 1 ? { re: branches[0].re, im: branches[0].im } : undefined;
+  return { qubits: n, done, measurements, pins, probes, probabilities, branches: branches.length, state };
 }

@@ -9,11 +9,18 @@
     <div id="pal"></div>
     <div id="main">
       <div id="cv">
-        <div id="world"><svg id="wires"></svg></div>
+        <div id="world"><svg id="wires"></svg><div id="box" hidden></div></div>
+        <div id="crumb" hidden>
+          <button class="p" id="back" title="Save and go back (Esc)">‹ Back</button>
+          <span id="path"></span>
+          <input id="gname" aria-label="Gate name" />
+        </div>
+        <div id="mxp" hidden></div>
         <div id="hint">
           Click a gate to chain it onto the selected block. Drag pin to pin to wire. Drag the
           background to pan, scroll to zoom. Drop a Probe on a wire to inspect it. Wires: thickness =
-          P(1), colour = phase, glow = entangled.
+          P(1), colour = phase, glow = entangled. Shift-click or shift-drag to select several blocks, Ctrl+G
+          to make them a gate, double-click a gate to edit it. ⊞ on a gate shows its matrix.
         </div>
       </div>
       <aside id="lib">

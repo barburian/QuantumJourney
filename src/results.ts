@@ -1,9 +1,10 @@
-import { $ } from './dom';
+import { $, escapeHtml } from './dom';
 import { MAX_QUBITS, type SimResult } from './simulator';
 
 const MAX_ROWS = 16;
 
-export function renderResults(r: SimResult): void {
+/** `context` is an extra note for the header, e.g. which custom gate is being edited. */
+export function renderResults(r: SimResult, context = ''): void {
   const el = $('#res');
   if (!r.qubits) {
     el.innerHTML = '<h2>Add a Qubit to begin</h2>';
@@ -20,8 +21,9 @@ export function renderResults(r: SimResult): void {
   rows.sort((a, b) => a[0] - b[0]);
 
   const branches = r.branches && r.branches > 1 ? ` · ${r.branches} measurement branches` : '';
+  const note = context ? ` · ${escapeHtml(context)}` : '';
   el.innerHTML =
-    `<h2>Final probabilities <span>basis |q${r.qubits - 1}…q0⟩${branches}</span></h2>` +
+    `<h2>Final probabilities <span>basis |q${r.qubits - 1}…q0⟩${branches}${note}</span></h2>` +
     rows
       .map(
         ([i, v]) =>

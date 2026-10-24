@@ -9,11 +9,15 @@ const MAX_ZOOM = 2;
 /** Pan offset (x, y) in screen pixels and zoom factor. */
 export const viewport = { zoom: 1, x: 0, y: 0 };
 
+/** Called after every pan or zoom, for overlays that follow the circuit. */
+export const viewListeners: (() => void)[] = [];
+
 export function applyView(): void {
   const { zoom, x, y } = viewport;
   world.style.transform = `translate(${x}px,${y}px) scale(${zoom})`;
   canvas.style.backgroundPosition = `${x}px ${y}px`;
   canvas.style.backgroundSize = `${GRID * zoom}px ${GRID * zoom}px`;
+  for (const listener of viewListeners) listener();
 }
 
 /** Converts a pointer position to world coordinates. */

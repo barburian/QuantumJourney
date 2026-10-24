@@ -91,7 +91,7 @@ describe('qubit states', () => {
   });
 
   it('product states of several qubits are not entangled', () => {
-    const r = runExample('Uniform superposition');
+    const r = run(3, [['H', 0], ['H', 1], ['H', 2]]);
     for (const s of r.pins.values()) expect(s.entangled).toBe(false);
   });
 
@@ -138,8 +138,8 @@ describe('examples', () => {
     expect(rounded(runExample('GHZ state').probabilities)).toEqual([0.5, 0, 0, 0, 0, 0, 0, 0.5]);
   });
 
-  it('Uniform superposition', () => {
-    expect(rounded(runExample('Uniform superposition').probabilities)).toEqual(new Array(8).fill(0.125));
+  it('Hadamards on every qubit give a uniform superposition', () => {
+    expect(rounded(run(3, [['H', 0], ['H', 1], ['H', 2]]).probabilities)).toEqual(new Array(8).fill(0.125));
   });
 
   it('Grover search finds |11⟩', () => {

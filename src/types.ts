@@ -3,7 +3,8 @@ export type GateType =
   | 'H' | 'X' | 'Y' | 'Z' | 'S' | 'T'
   | 'Rx' | 'Ry' | 'Rz' | 'P'
   | 'CNOT' | 'CZ' | 'SWAP' | 'CP'
-  | 'M' | 'Probe';
+  | 'M' | 'Probe'
+  | 'Custom' | 'In' | 'Out';
 
 /** How a block is drawn: qubit source, square tile, rotation tile, or full card with labelled rows. */
 export type GateKind = 'q' | 'sq' | 'rot' | 'full';
@@ -35,6 +36,12 @@ export interface NodeData {
   y: number;
   p: number;
   init: number;
+  /** Custom gate definition used by a Custom block, or owned by an In/Out block. */
+  def?: string;
+  /** Custom block runs its definition inverted. */
+  dagger?: boolean;
+  /** Custom block has an extra control pin after its lanes. */
+  ctrl?: boolean;
 }
 
 export interface CircuitNode extends NodeData {

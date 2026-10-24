@@ -455,6 +455,224 @@ input[type="number"] {
   background: var(--panel);
 }
 
+/* ---------- custom gates ---------- */
+
+/* Gate groups sit directly in the toolbar's flex row. */
+#gates {
+  display: contents;
+}
+
+.node.custom {
+  width: 156px;
+}
+
+.node.custom .hd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.node.custom .tt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops {
+  display: flex;
+  gap: 3px;
+}
+
+.node .ops button {
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.node .ops button.on {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: #fff;
+}
+
+.node .ops button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.node.io {
+  width: 112px;
+}
+
+/* A custom gate's Inputs and Outputs blocks can't be deleted. */
+.node.io .x {
+  display: none !important;
+}
+
+#crumb {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px #0002;
+  color: var(--mut);
+}
+
+#crumb[hidden] {
+  display: none;
+}
+
+#gname {
+  font: inherit;
+  font-weight: 600;
+  width: 12em;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+#box {
+  position: absolute;
+  z-index: 3;
+  border: 1px dashed var(--acc);
+  background: color-mix(in srgb, var(--acc) 10%, transparent);
+  pointer-events: none;
+}
+
+/* ---------- matrix ---------- */
+
+.mxb {
+  position: absolute;
+  top: -10px;
+  right: 12px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--acc);
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  display: none;
+  z-index: 3;
+}
+
+.node.sel .mxb,
+.node:hover .mxb {
+  display: block;
+}
+
+#mxp {
+  position: absolute;
+  z-index: 5;
+  max-width: min(620px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  overflow: auto;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px #0004;
+}
+
+#mxp[hidden] {
+  display: none;
+}
+
+.mh {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.mh span {
+  color: var(--mut);
+  font-size: 12px;
+}
+
+.mh .fill {
+  flex: 1;
+}
+
+.mxc {
+  color: var(--mut);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 16px;
+}
+
+.mxc:hover {
+  color: #ef4444;
+}
+
+.mtw {
+  overflow-x: auto;
+}
+
+.mt {
+  border-collapse: collapse;
+  font: 12px ui-monospace, Consolas, monospace;
+}
+
+.mt th {
+  color: var(--mut);
+  font-weight: 400;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.mt td {
+  min-width: 2.5em;
+  padding: 3px 6px;
+  text-align: center;
+  white-space: nowrap;
+  background: var(--c);
+  border: 1px solid var(--line);
+}
+
+.mt td.z {
+  color: var(--mut);
+}
+
+.mt.small {
+  font-size: 10px;
+}
+
+.mt.small td {
+  padding: 1px 3px;
+}
+
+/* Colour-only view for bigger matrices. */
+.mt.heat td {
+  width: 7px;
+  min-width: 0;
+  height: 7px;
+  padding: 0;
+}
+
+.mt.heat th {
+  display: none;
+}
+
+.cap {
+  margin: 6px 0 0;
+  color: var(--mut);
+  font-size: 12px;
+}
+
 /* ---------- probe ---------- */
 
 .node.probe {
@@ -597,6 +815,23 @@ input[type="number"] {
 .dx {
   color: var(--mut);
   padding: 0 4px;
+}
+
+.li.confirm {
+  cursor: default;
+  border-color: #ef4444;
+}
+
+.li .acts {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+button.danger {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
 }
 
 .dx:hover {

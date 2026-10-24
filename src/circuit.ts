@@ -1,5 +1,5 @@
 /* Wiring rules for the circuit graph. */
-import { GATES } from './gates';
+import { pinLabels } from './custom';
 import { editor, nodeById } from './state';
 import type { CircuitNode, PinRef } from './types';
 
@@ -20,16 +20,21 @@ export function link(out: PinRef, into: PinRef): void {
   editor.wires.push({ a: out[0], ai: out[1], b: into[0], bi: into[1] });
 }
 
-/** Id of the Qubit node whose wire passes through pin `index` of a node, or null if it isn't connected. */
-export function sourceQubit(id: number, index: number): number | null {
+/**
+ * Identifies the qubit whose wire passes through pin `index` of a node: a
+ * Qubit block's id, or "id:lane" for a lane of a custom gate's In block. Null
+ * if the pin isn't connected to one.
+ */
+export function sourceQubit(id: number, index: number): string | null {
   const node = nodeById(id);
   if (!node) return null;
-  if (node.type === 'Q') return id;
+  if (node.type === 'Q') return String(id);
+  if (node.type === 'In') return `${id}:${index}`;
   const w = editor.wires.find((w) => w.b === id && w.bi === index);
   return w ? sourceQubit(w.a, w.ai) : null;
 }
 
 /** Index of the first unconnected output of a node, or -1. */
 export function freeOutput(node: CircuitNode): number {
-  return GATES[node.type].outs.findIndex((_, i) => !editor.wires.some((w) => w.a === node.id && w.ai === i));
+  return pinLabels(node).outs.findIndex((_, i) => !editor.wires.some((w) => w.a === node.id && w.ai === i));
 }
