@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quantum Blueprints</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#eef0f5;--panel:#fff;--ink:#161a26;--mut:#667085;--line:#d5d9e4;--grid:#e1e5ee;--wire:#2f6fed;--acc:#6b4df0;--bar:#2f6fed;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f121a;--panel:#191d29;--ink:#e7eaf3;--mut:#8a93a8;--line:#2b3144;--grid:#1a1f2c;--wire:#6aa2ff;--acc:#a08dff;--bar:#6aa2ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f121a;--panel:#191d29;--ink:#e7eaf3;--mut:#8a93a8;--line:#2b3144;--grid:#1a1f2c;--wire:#6aa2ff;--acc:#a08dff;--bar:#6aa2ff;color-scheme:dark}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;font:14px/1.4 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+#pal{display:flex;flex-wrap:wrap;gap:6px 16px;padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--line);align-items:center}
+.grp{display:flex;gap:4px;align-items:center;flex-wrap:wrap}.grp small{color:var(--mut);margin-right:2px}
+button{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:3px 9px;cursor:pointer;border-left:4px solid var(--c,var(--line))}
+button:hover{border-color:var(--acc)}button.p{border-left-width:1px}
+label.chk{display:flex;gap:4px;align-items:center;color:var(--mut)}
+#main{flex:1;display:flex;min-height:0}
+#cv{flex:1;min-height:240px;position:relative;overflow:hidden;touch-action:none;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+#world{position:absolute;left:0;top:0;transform-origin:0 0}
+#hint{position:absolute;left:10px;bottom:6px;color:var(--mut);font-size:12px;pointer-events:none}
+#wires{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none;z-index:0}
+.ln{fill:none;stroke:var(--wire);stroke-width:3}.hit{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}
+.w:hover .ln{stroke:#ef4444}.tmp{fill:none;stroke:var(--wire);stroke-width:2;stroke-dasharray:5 4}
+.node{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 10px #0003;z-index:1;user-select:none;-webkit-user-select:none}
+.node.t{background:none;border:0;box-shadow:none}
+.node.sq{width:52px}.node.rot{width:128px}.node.q{width:96px}.node.full{width:132px}
+.node.sel{outline:2px solid var(--acc);outline-offset:2px}.node.idle{opacity:.55}
+.hd{color:#fff;padding:5px 8px;border-radius:9px 9px 0 0;font-weight:600;cursor:grab}
+.tile{height:44px;padding:0;border-radius:9px;display:flex;align-items:center;box-shadow:0 2px 8px #0003}
+.tile .tt{flex:1;text-align:center;font-size:18px}
+.node.q .tt{flex:none;padding-left:10px;font-size:14px}.node.q .st{margin-left:6px}
+.node.rot .tt{flex:none;margin-left:10px;font-size:15px}
+.node.rot input{width:44px;margin:0 3px 0 6px}.tile small{font-size:13px}
+.tile .pin:last-child{margin-left:auto}
+.node button{border-left-width:1px;padding:1px 6px;font-size:12px;background:var(--panel)}
+.x{position:absolute;top:-10px;right:-10px;width:18px;height:18px;border-radius:50%;background:#ef4444;color:#fff;font-size:13px;line-height:18px;text-align:center;cursor:pointer;display:none;z-index:3}
+.node.sel .x,.node:hover .x{display:block}
+.rw{display:flex;align-items:center;padding:7px 0;color:var(--mut);font-size:12px}.rw span{flex:1;text-align:center}
+.pin,.sp{width:12px;height:12px;margin:0 -6px;flex:none;box-sizing:border-box}
+.pin{border-radius:50%;background:var(--panel);border:2px solid var(--wire);cursor:crosshair;position:relative;z-index:2}
+.pin::after{content:"";position:absolute;inset:-7px}.pin.on{background:var(--wire)}
+.pr,.mx{padding:0 8px 8px;color:var(--mut);font-size:12px}.pr{display:flex;gap:6px;align-items:center}
+.mx{display:grid;gap:5px}.bar{display:block;height:6px;background:var(--bg);border-radius:3px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--bar)}
+input[type=number]{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:2px 4px;min-width:0;width:100%;box-sizing:border-box}
+.node input[type=number]{background:var(--panel)}
+#lib{width:216px;flex:none;overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:10px}
+#lib h3{font-size:14px;margin:0 0 8px}#lib h4{font-size:12px;color:var(--mut);margin:12px 0 4px;font-weight:600}
+.sv{display:flex;gap:4px}.sv input{flex:1;min-width:0;font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px}
+.li{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;margin:4px 0;cursor:pointer}
+.li:hover{border-color:var(--acc)}.li small{display:block;color:var(--mut)}.dx{color:var(--mut);padding:0 4px}.dx:hover{color:#ef4444}.mut{color:var(--mut);font-size:12px;margin:4px 0}
+#res{flex:none;max-height:30vh;overflow:auto;padding:8px 12px 10px;background:var(--panel);border-top:1px solid var(--line)}
+#res h2{font-size:13px;margin:0 0 6px;font-weight:600}#res h2 span{color:var(--mut);font-weight:400}
+.r{display:flex;align-items:center;gap:8px;margin:3px 0}.k{width:64px;font-family:ui-monospace,Consolas,monospace}
+.tr{flex:1;height:10px;background:var(--bg);border-radius:5px;overflow:hidden}.tr i{display:block;height:100%;background:var(--bar)}.v{width:52px;text-align:right;color:var(--mut)}
+@media (max-width:760px){#main{flex-direction:column}#lib{width:auto;max-height:26vh;border-left:0;border-top:1px solid var(--line)}}
+</style></head><body>
+<div id="pal"></div>
+<!-- v2: compact gates, auto-chain, initial states, library, measurement -->
+<div id="main">
+ <div id="cv"><div id="world"><svg id="wires"></svg></div><div id="hint">Click a gate to chain it onto the selected block. Drag pin to pin to wire. Drag the background to pan, scroll to zoom.</div></div>
+ <aside id="lib"><h3>Library</h3><div class="sv"><input id="nm" placeholder="Name this circuit"><button class="p" id="sv">Save</button></div><div id="libl"></div></aside>
+</div>
+<div id="res"></div>
+<script>
+const $=s=>document.querySelector(s),cv=$('#cv'),world=$('#world'),svg=$('#wires'),R=Math.SQRT1_2;
+const GR='#0f9d74',PU='#6b4df0',OR='#c9690a',BL='#2f6fed',PK='#c2255c';
+const sq=()=>({c:PU,k:'sq',ins:[''],outs:['']}),rot=()=>({c:OR,k:'rot',par:1,ins:[''],outs:['']}),two=(a,b,x={})=>({c:BL,k:'full',ins:[a,b],outs:[a,b],...x});
+const DEF={Q:{c:GR,k:'q',ins:[],outs:['']},H:sq(),X:sq(),Y:sq(),Z:sq(),S:sq(),T:sq(),Rx:rot(),Ry:rot(),Rz:rot(),P:rot(),
+ CNOT:two('control','target'),CZ:two('a','b'),SWAP:two('a','b'),CP:two('control','target',{par:1}),M:{c:PK,k:'full',ins:[''],outs:[''],meas:1}};
+const GROUPS=[['Qubit',['Q']],['Gates',['H','X','Y','Z','S','T']],['Rotations',['Rx','Ry','Rz','P']],['Two-qubit',['CNOT','CZ','SWAP','CP']],['Readout',['M']]];
+const NAME={Q:'Qubit',M:'Measure'},ST=['|0⟩','|1⟩','|+⟩','|−⟩'],INIT=[[],['X'],['H'],['X','H']];
+let nodes=[],wires=[],uid=0,drag=null,tmp='',selN=null,lastN=null,z=1,ox=0,oy=0;
+const byId=id=>nodes.find(n=>n.id===id);
+/* ---------- simulator (state vector, with branching for collapsing measurements) ---------- */
+function mat(n){const h=(n.p||0)*Math.PI,c=Math.cos(h/2),s=Math.sin(h/2);
+ return({H:[[R,0],[R,0],[R,0],[-R,0]],X:[[0,0],[1,0],[1,0],[0,0]],Y:[[0,0],[0,-1],[0,1],[0,0]],Z:[[1,0],[0,0],[0,0],[-1,0]],
+ S:[[1,0],[0,0],[0,0],[0,1]],T:[[1,0],[0,0],[0,0],[R,R]],Rx:[[c,0],[0,-s],[0,-s],[c,0]],Ry:[[c,0],[-s,0],[s,0],[c,0]],
+ Rz:[[c,-s],[0,0],[0,0],[c,s]],P:[[1,0],[0,0],[0,0],[Math.cos(h),Math.sin(h)]]})[n.type]}
+function apply(n,q,re,im,N){const L=1<<N,t=n.type;
+ if(DEF[t].ins.length===1){const m=mat(n),b=1<<q[0];
+  for(let i=0;i<L;i++){if(i&b)continue;const j=i|b,ar=re[i],ai=im[i],br=re[j],bi=im[j];
+   re[i]=m[0][0]*ar-m[0][1]*ai+m[1][0]*br-m[1][1]*bi;im[i]=m[0][0]*ai+m[0][1]*ar+m[1][0]*bi+m[1][1]*br;
+   re[j]=m[2][0]*ar-m[2][1]*ai+m[3][0]*br-m[3][1]*bi;im[j]=m[2][0]*ai+m[2][1]*ar+m[3][0]*bi+m[3][1]*br}return}
+ const a=1<<q[0],b=1<<q[1];
+ for(let i=0;i<L;i++){
+  if(t==='CNOT'&&(i&a)&&!(i&b)){const j=i|b;[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}
+  else if(t==='CZ'&&(i&a)&&(i&b)){re[i]=-re[i];im[i]=-im[i]}
+  else if(t==='CP'&&(i&a)&&(i&b)){const h=(n.p||0)*Math.PI,c=Math.cos(h),s=Math.sin(h),r=re[i],m=im[i];re[i]=r*c-m*s;im[i]=r*s+m*c}
+  else if(t==='SWAP'&&(i&a)&&!(i&b)){const j=i^a^b;[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]]}}}
+function prob1(b,q,L){let s=0;for(let i=0;i<L;i++)if((i>>q)&1)s+=b.re[i]*b.re[i]+b.im[i]*b.im[i];return s}
+function sim(){const qs=nodes.filter(n=>n.type==='Q'),N=qs.length,done=new Set(qs.map(n=>n.id)),meas={};
+ if(!N||N>8)return{N,done,meas};
+ const L=1<<N;let br=[{w:1,re:new Float64Array(L),im:new Float64Array(L)}];br[0].re[0]=1;
+ const val={};qs.forEach((n,i)=>{val[n.id+':0']=i;INIT[n.init||0].forEach(t=>apply({type:t},[i],br[0].re,br[0].im,N))});
+ let prog=true;
+ while(prog){prog=false;for(const n of nodes){if(done.has(n.id))continue;
+  const ins=DEF[n.type].ins.map((_,i)=>{const w=wires.find(w=>w.b===n.id&&w.bi===i);return w?val[w.a+':'+w.ai]:undefined});
+  if(ins.some(v=>v===undefined)||new Set(ins).size<ins.length)continue;
+  if(n.type==='M'){const q=ins[0];let p1=0;br.forEach(b=>p1+=b.w*prob1(b,q,L));meas[n.id]=p1;
+   if(n.p&&br.length<=128){const nb=[];br.forEach(b=>{const p=prob1(b,q,L);[0,1].forEach(o=>{const pr=o?p:1-p;if(pr<1e-12)return;
+    const re=new Float64Array(L),im=new Float64Array(L),s=1/Math.sqrt(pr);for(let i=0;i<L;i++)if(((i>>q)&1)===o){re[i]=b.re[i]*s;im[i]=b.im[i]*s}nb.push({w:b.w*pr,re,im})})});br=nb}}
+  else br.forEach(b=>apply(n,ins,b.re,b.im,N));
+  ins.forEach((q,i)=>val[n.id+':'+i]=q);done.add(n.id);prog=true}}
+ const p=new Array(L).fill(0);br.forEach(b=>{for(let i=0;i<L;i++)p[i]+=b.w*(b.re[i]*b.re[i]+b.im[i]*b.im[i])});
+ return{N,done,meas,p,nb:br.length}}
+function results(r){const el=$('#res');
+ if(!r.N){el.innerHTML='<h2>Add a Qubit to begin</h2>';return}
+ if(r.N>8){el.innerHTML='<h2>Too many qubits <span>(limit is 8 in this prototype)</span></h2>';return}
+ let rows=r.p.map((v,i)=>[i,v]).filter(x=>x[1]>1e-6);
+ if(rows.length>16)rows=rows.sort((a,b)=>b[1]-a[1]).slice(0,16);rows.sort((a,b)=>a[0]-b[0]);
+ el.innerHTML=`<h2>Final probabilities <span>basis |q${r.N-1}…q0⟩${r.nb>1?` · ${r.nb} measurement branches`:''}</span></h2>`+rows.map(([i,v])=>
+ `<div class="r"><span class="k">|${i.toString(2).padStart(r.N,'0')}⟩</span><div class="tr"><i style="width:${(v*100).toFixed(2)}%"></i></div><span class="v">${(v*100).toFixed(1)}%</span></div>`).join('')}
+/* ---------- view, wires ---------- */
+function view(){world.style.transform=`translate(${ox}px,${oy}px) scale(${z})`;cv.style.backgroundPosition=`${ox}px ${oy}px`;cv.style.backgroundSize=`${24*z}px ${24*z}px`}
+const wpt=e=>{const r=world.getBoundingClientRect();return[(e.clientX-r.left)/z,(e.clientY-r.top)/z]};
+function ctr(el){const r=el.getBoundingClientRect(),c=world.getBoundingClientRect();return[(r.left+r.width/2-c.left)/z,(r.top+r.height/2-c.top)/z]}
+function zoomAt(cx,cy,f){const r=cv.getBoundingClientRect(),px=cx-r.left,py=cy-r.top,nz=Math.min(2,Math.max(.3,z*f));ox=px-(px-ox)*nz/z;oy=py-(py-oy)*nz/z;z=nz;view()}
+function fit(){if(!nodes.length){z=1;ox=oy=0;view();return}
+ const x0=Math.min(...nodes.map(n=>n.x)),y0=Math.min(...nodes.map(n=>n.y)),x1=Math.max(...nodes.map(n=>n.x+n.el.offsetWidth)),y1=Math.max(...nodes.map(n=>n.y+n.el.offsetHeight));
+ const cw=cv.clientWidth,ch=cv.clientHeight;z=Math.max(.35,Math.min(1,(cw-60)/(x1-x0),(ch-60)/(y1-y0)));
+ ox=(cw-(x1-x0)*z)/2-x0*z;oy=(ch-(y1-y0)*z)/2-y0*z;view();draw()}
+const pinEl=(id,k,i)=>byId(id).el.querySelector(`.pin[data-k="${k}"][data-i="${i}"]`);
+function path(a,b){const d=Math.max(40,Math.abs(b[0]-a[0])/2);return`M${a[0]},${a[1]}C${a[0]+d},${a[1]} ${b[0]-d},${b[1]} ${b[0]},${b[1]}`}
+function draw(){let h='';wires.forEach((w,k)=>{const d=path(ctr(pinEl(w.a,'o',w.ai)),ctr(pinEl(w.b,'i',w.bi)));
+ h+=`<g class="w" data-k="${k}"><path class="hit" d="${d}"/><path class="ln" d="${d}"/></g>`});
+ if(tmp)h+=`<path class="tmp" d="${tmp}"/>`;svg.innerHTML=h;
+ world.querySelectorAll('.pin').forEach(p=>p.classList.remove('on'));
+ wires.forEach(w=>{pinEl(w.a,'o',w.ai).classList.add('on');pinEl(w.b,'i',w.bi).classList.add('on')})}
+function update(){const r=sim();let qi=0;
+ nodes.forEach(n=>{const e=n.el;e.classList.toggle('idle',!r.done.has(n.id));
+  e.querySelector('.tt').textContent=n.type==='Q'?'q'+qi++:(NAME[n.type]||n.type);
+  if(n.type==='Q')e.querySelector('.st').textContent=ST[n.init||0];
+  if(n.type==='M'){const v=r.meas[n.id];e.querySelector('.m').textContent=v==null?'P(1) —':'P(1) '+(v*100).toFixed(1)+'%';
+   e.querySelector('.bar i').style.width=(v==null?0:v*100)+'%';e.querySelector('.md').textContent=n.p?'Collapse':'Peek'}});
+ results(r);draw()}
+/* ---------- nodes ---------- */
+const pos=n=>{n.el.style.left=n.x+'px';n.el.style.top=n.y+'px'};
+function sel(n){selN=n;nodes.forEach(m=>m.el.classList.toggle('sel',m===n))}
+function html(n,d){const pi=i=>`<i class="pin" data-k="i" data-i="${i}"></i>`,po=i=>`<i class="pin" data-k="o" data-i="${i}"></i>`,bg=`style="background:${d.c}"`;
+ if(d.k==='sq')return`<div class="hd tile" ${bg}>${pi(0)}<b class="tt"></b>${po(0)}</div>`;
+ if(d.k==='rot')return`<div class="hd tile" ${bg}>${pi(0)}<b class="tt"></b><input type="number" step="0.25" value="${n.p}" aria-label="Angle in multiples of pi"><small>π</small>${po(0)}</div>`;
+ if(d.k==='q')return`<div class="hd tile" ${bg}><b class="tt"></b><button class="st" title="Click to change the initial state"></button>${po(0)}</div>`;
+ let h=`<div class="hd" ${bg}><span class="tt"></span></div>`;
+ for(let i=0;i<Math.max(d.ins.length,d.outs.length);i++)h+=`<div class="rw">${i<d.ins.length?pi(i):'<i class="sp"></i>'}<span>${d.ins[i]||d.outs[i]||''}</span>${i<d.outs.length?po(i):'<i class="sp"></i>'}</div>`;
+ if(d.par)h+=`<label class="pr">θ/π<input type="number" step="0.25" value="${n.p}"></label>`;
+ if(d.meas)h+=`<div class="mx"><span class="bar"><i></i></span><span class="m"></span><button class="md" title="Peek reads the state; Collapse measures it"></button></div>`;
+ return h}
+function add(type,x,y,o={}){const d=DEF[type],n={id:++uid,type,x,y,p:o.p??(d.par?0.5:0),init:o.init||0};
+ const el=document.createElement('div');el.className='node '+(d.k==='full'?'full':'t '+d.k);el.dataset.id=n.id;
+ el.innerHTML=html(n,d)+'<b class="x" title="Delete">×</b>';n.el=el;world.appendChild(el);pos(n);nodes.push(n);return n}
+function remove(n){n.el.remove();nodes=nodes.filter(m=>m!==n);wires=wires.filter(w=>w.a!==n.id&&w.b!==n.id);if(selN===n)selN=null;if(lastN===n)lastN=null;update()}
+function clearAll(){nodes.forEach(n=>n.el.remove());nodes=[];wires=[];selN=lastN=null}
+function reach(f,t){return f===t||wires.some(w=>w.a===f&&reach(w.b,t))}
+function link(o,t){if(o[0]===t[0]||reach(t[0],o[0]))return;
+ wires=wires.filter(w=>!(w.a===o[0]&&w.ai===o[1])&&!(w.b===t[0]&&w.bi===t[1]));wires.push({a:o[0],ai:o[1],b:t[0],bi:t[1]})}
+function src(id,i){const n=byId(id);if(!n)return null;if(n.type==='Q')return id;const w=wires.find(w=>w.b===id&&w.bi===i);return w?src(w.a,w.ai):null}
+const freeOut=n=>DEF[n.type].outs.findIndex((_,i)=>!wires.some(w=>w.a===n.id&&w.ai===i));
+function alignIn(n,py){const dy=ctr(pinEl(n.id,'i',0))[1]-n.y;n.y=py-dy;pos(n)}
+function clear(n){for(let k=0;k<40;k++){const hit=nodes.some(m=>m!==n&&n.x<m.x+m.el.offsetWidth+8&&m.x<n.x+n.el.offsetWidth+8&&n.y<m.y+m.el.offsetHeight+8&&m.y<n.y+n.el.offsetHeight+8);
+ if(!hit)break;n.y+=n.el.offsetHeight+18;pos(n)}}
+/* click or drop a gate: place it to the right of the selected block and wire it in */
+function chain(type,cx,cy){const d=DEF[type],prev=selN||lastN,auto=$('#auto').checked;
+ const pin=auto&&prev&&d.ins.length?freeOut(prev):-1;let n;
+ if(type==='Q'){const ys=nodes.filter(m=>m.type==='Q').map(m=>m.y);n=add(type,cx??24,cy??(ys.length?Math.max(...ys)+110:24))}
+ else if(cx!=null){n=add(type,cx,cy)}
+ else if(pin>=0){n=add(type,prev.x+prev.el.offsetWidth+44,0);alignIn(n,ctr(pinEl(prev.id,'o',pin))[1])}
+ else{n=add(type,prev?prev.x+prev.el.offsetWidth+44:60,prev?prev.y:40)}
+ clear(n);
+ if(pin>=0){link([prev.id,pin],[n.id,0]);const mine=src(prev.id,pin);
+  for(let k=1;k<d.ins.length;k++){const c=nodes.slice().reverse().find(c=>c!==n&&c!==prev&&freeOut(c)>=0&&src(c.id,freeOut(c))!=null&&src(c.id,freeOut(c))!==mine);
+   if(c)link([c.id,freeOut(c)],[n.id,k])}}
+ sel(n);lastN=n;update()}
+/* ---------- library ---------- */
+const BUILT=[
+ {name:'Bell state',d:'2 qubits',nq:2,ops:[['H',0],['CNOT',0,1]]},
+ {name:'GHZ state',d:'3 qubits',nq:3,ops:[['H',0],['CNOT',0,1],['CNOT',1,2]]},
+ {name:'Uniform superposition',d:'3 qubits',nq:3,ops:[['H',0],['H',1],['H',2]]},
+ {name:'Grover search',d:'2 qubits, marks |11⟩',nq:2,ops:[['H',0],['H',1],['CZ',0,1],['H',0],['H',1],['X',0],['X',1],['CZ',0,1],['X',0],['X',1],['H',0],['H',1],['M',0],['M',1]]},
+ {name:'Quantum Fourier transform',d:'3 qubits',nq:3,init:[1,0,1],ops:[['H',0],['CP',1,0,0.5],['CP',2,0,0.25],['H',1],['CP',2,1,0.5],['H',2],['SWAP',0,2]]},
+ {name:'Mid-circuit measurement',d:'collapse, then continue',nq:1,ops:[['H',0],['M',0,1],['H',0]]}];
+let saved=[];try{saved=JSON.parse(localStorage.getItem('qb-lib')||'[]')}catch(e){}
+const persist=()=>{try{localStorage.setItem('qb-lib',JSON.stringify(saved))}catch(e){}};
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+function fromOps(nq,ops,init=[]){clearAll();const last=[],ROW=110;let x=150;
+ for(let i=0;i<nq;i++)last[i]=[add('Q',20,20+i*ROW,{init:init[i]||0}).id,0];
+ ops.forEach(op=>{const t=op[0],a=DEF[t].ins.length,qs=op.slice(1,1+a),n=add(t,x,0,{p:op[1+a]});
+  alignIn(n,20+qs[0]*ROW+22);qs.forEach((q,k)=>{link(last[q],[n.id,k]);last[q]=[n.id,k]});x+=n.el.offsetWidth+46});
+ fit();update()}
+const snap=()=>({nodes:nodes.map(n=>({id:n.id,type:n.type,x:n.x,y:n.y,p:n.p,init:n.init})),wires:wires.map(w=>({...w}))});
+function load(g){clearAll();const m={};g.nodes.forEach(s=>m[s.id]=add(s.type,s.x,s.y,{p:s.p,init:s.init}).id);
+ g.wires.forEach(w=>wires.push({a:m[w.a],ai:w.ai,b:m[w.b],bi:w.bi}));fit();update()}
+function libR(){$('#libl').innerHTML='<h4>Examples</h4>'+BUILT.map((b,i)=>`<div class="li" data-b="${i}"><span>${b.name}<small>${b.d}</small></span></div>`).join('')+
+ '<h4>My circuits</h4>'+(saved.length?saved.map((s,i)=>`<div class="li" data-s="${i}"><span>${esc(s.name)}</span><b class="dx" data-d="${i}" title="Delete">×</b></div>`).join(''):'<p class="mut">Nothing saved yet. Name the circuit above and press Save.</p>')}
+$('#libl').addEventListener('click',e=>{const d=e.target.closest('.dx'),li=e.target.closest('.li');
+ if(d){saved.splice(+d.dataset.d,1);persist();libR();return}
+ if(!li)return;if(li.dataset.b!=null){const b=BUILT[+li.dataset.b];fromOps(b.nq,b.ops,b.init)}else load(saved[+li.dataset.s].g)});
+$('#sv').onclick=()=>{const i=$('#nm');saved.push({name:i.value.trim()||'Circuit '+(saved.length+1),g:snap()});persist();i.value='';libR()};
+/* ---------- toolbar ---------- */
+$('#pal').innerHTML=GROUPS.map(([t,l])=>`<div class="grp"><small>${t}</small>${l.map(k=>`<button draggable="true" data-t="${k}" style="--c:${DEF[k].c}">${NAME[k]||k}</button>`).join('')}</div>`).join('')+
+ '<div class="grp"><label class="chk"><input type="checkbox" id="auto" checked>Auto-connect</label><button class="p" id="zo" title="Zoom out">−</button><button class="p" id="zi" title="Zoom in">+</button><button class="p" id="ft">Fit</button><button class="p" id="clr">Clear</button></div>';
+$('#pal').addEventListener('dragstart',e=>{const t=e.target.dataset?.t;if(t)e.dataTransfer.setData('text/plain',t)});
+$('#pal').addEventListener('click',e=>{const t=e.target.dataset?.t;if(t)chain(t)});
+const mid=()=>{const r=cv.getBoundingClientRect();return[r.left+r.width/2,r.top+r.height/2]};
+$('#zi').onclick=()=>zoomAt(...mid(),1.25);$('#zo').onclick=()=>zoomAt(...mid(),.8);$('#ft').onclick=fit;$('#clr').onclick=()=>{clearAll();update()};
+cv.addEventListener('dragover',e=>e.preventDefault());
+cv.addEventListener('drop',e=>{e.preventDefault();const t=e.dataTransfer.getData('text/plain');if(!DEF[t])return;const p=wpt(e);chain(t,Math.max(0,p[0]-30),Math.max(0,p[1]-22))});
+cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,e.deltaY<0?1.1:1/1.1)},{passive:false});
+/* ---------- pointer interaction ---------- */
+cv.addEventListener('pointerdown',e=>{const pin=e.target.closest('.pin');
+ if(pin){drag={w:1,id:+pin.closest('.node').dataset.id,k:pin.dataset.k,i:+pin.dataset.i};e.preventDefault();return}
+ if(e.target.closest('.x,input,button'))return;
+ const nd=e.target.closest('.node');
+ if(nd){const n=byId(+nd.dataset.id);sel(n);if(e.target.closest('.hd')){const p=wpt(e);drag={n,dx:p[0]-n.x,dy:p[1]-n.y}}return}
+ if(e.target.closest('.w'))return;
+ sel(null);drag={pan:1,sx:e.clientX,sy:e.clientY,ox0:ox,oy0:oy}});
+addEventListener('pointermove',e=>{if(!drag)return;
+ if(drag.pan){ox=drag.ox0+e.clientX-drag.sx;oy=drag.oy0+e.clientY-drag.sy;view();return}
+ const p=wpt(e);
+ if(drag.n){drag.n.x=Math.max(0,p[0]-drag.dx);drag.n.y=Math.max(0,p[1]-drag.dy);pos(drag.n)}
+ else{const a=ctr(pinEl(drag.id,drag.k,drag.i));tmp=drag.k==='o'?path(a,p):path(p,a)}draw()});
+addEventListener('pointerup',e=>{if(!drag)return;
+ if(drag.w){const p=document.elementFromPoint(e.clientX,e.clientY)?.closest('.pin');
+  if(p&&p.dataset.k!==drag.k){const me=[drag.id,drag.i],other=[+p.closest('.node').dataset.id,+p.dataset.i];drag.k==='o'?link(me,other):link(other,me)}}
+ drag=null;tmp='';update()});
+cv.addEventListener('click',e=>{const nd=e.target.closest('.node'),n=nd&&byId(+nd.dataset.id);
+ if(e.target.closest('.x'))remove(n);
+ else if(e.target.closest('.st')){n.init=((n.init||0)+1)%4;update()}
+ else if(e.target.closest('.md')){n.p=n.p?0:1;update()}
+ else{const w=e.target.closest('.w');if(w){wires.splice(+w.dataset.k,1);update()}}});
+cv.addEventListener('input',e=>{const i=e.target.closest('input');if(!i)return;byId(+i.closest('.node').dataset.id).p=parseFloat(i.value)||0;update()});
+addEventListener('keydown',e=>{if((e.key==='Delete'||e.key==='Backspace')&&selN&&!/INPUT/.test(document.activeElement.tagName))remove(selN)});
+addEventListener('resize',draw);
+libR();fromOps(BUILT[0].nq,BUILT[0].ops);
+</script></body></html>

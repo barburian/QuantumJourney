@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Quantum Blueprints</title>
+  </head>
+  <body>
+    <div id="pal"></div>
+    <div id="main">
+      <div id="cv">
+        <div id="world"><svg id="wires"></svg></div>
+        <div id="hint">
+          Click a gate to chain it onto the selected block. Drag pin to pin to wire. Drag the
+          background to pan, scroll to zoom.
+        </div>
+      </div>
+      <aside id="lib">
+        <h3>Library</h3>
+        <div class="sv">
+          <input id="nm" placeholder="Name this circuit" />
+          <button class="p" id="sv">Save</button>
+        </div>
+        <div id="libl"></div>
+      </aside>
+    </div>
+    <div id="res"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
