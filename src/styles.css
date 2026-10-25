@@ -246,7 +246,7 @@ label.chk {
 }
 
 .node.rot {
-  width: 128px;
+  width: 146px;
 }
 
 .node.q {
@@ -306,8 +306,19 @@ label.chk {
 }
 
 .node.rot input {
-  width: 44px;
+  width: 62px;
   margin: 0 3px 0 6px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* The spinner arrows took half the box; arrow keys still step the angle. */
+.node.rot input::-webkit-inner-spin-button,
+.node.rot input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .tile small {
