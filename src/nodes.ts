@@ -1,5 +1,5 @@
 import { freeOutput, link, sourceQubit } from './circuit';
-import { pinLabels } from './custom';
+import { MAX_REPEAT, pinLabels, repeats } from './custom';
 import { escapeHtml, world } from './dom';
 import { classicalPins, GATES, MATH_OPS } from './gates';
 import { hasMatrix } from './matrix';
@@ -15,7 +15,7 @@ const CHAIN_GAP = 44;
 const QUBIT_SPACING = 110;
 
 export type NodeOptions = Partial<
-  Pick<NodeData, 'p' | 'init' | 'def' | 'dagger' | 'ctrl' | 'cond' | 'op' | 'text' | 'vals' | 'goal' | 'steps'>
+  Pick<NodeData, 'p' | 'init' | 'def' | 'dagger' | 'ctrl' | 'cond' | 'op' | 'text' | 'vals' | 'goal' | 'steps' | 'rep'>
 >;
 
 /** A classical pin; `side` is the edge it sits on, which sets the direction its wires leave in. */
@@ -132,6 +132,11 @@ function quantumHtml(node: NodeData): string {
       `<span>${escapeHtml(ins[i] || outs[i] || '')}</span>` +
       `${i < outs.length ? pinOut(i) : '<i class="sp"></i>'}</div>`;
   }
+  if (node.type === 'Custom') {
+    html +=
+      `<label class="pr rp" title="Runs the gate this many times in a row">repeat ×` +
+      `<input class="rep" type="number" min="1" max="${MAX_REPEAT}" step="1" value="${repeats(node)}"></label>`;
+  }
   if (gate.param) html += `<label class="pr">θ/π<input type="number" step="0.25" value="${node.p}"></label>`;
   if (gate.measure) {
     html +=
@@ -194,6 +199,7 @@ export function addNode(type: GateType, x: number, y: number, opts: NodeOptions 
   if (opts.ctrl) node.ctrl = true;
   if (opts.cond) node.cond = true;
   if (opts.op) node.op = opts.op;
+  if (opts.rep && opts.rep > 1) node.rep = opts.rep;
   if (type === 'Obs') node.text = opts.text ?? 'Z0';
   if (type === 'Opt') {
     node.vals = opts.vals?.slice() ?? [0.1];

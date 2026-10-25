@@ -700,6 +700,14 @@ input[type="number"] {
   white-space: nowrap;
 }
 
+.pr.rp {
+  white-space: nowrap;
+}
+
+.pr.rp input {
+  width: 56px;
+}
+
 .ops {
   display: flex;
   gap: 3px;

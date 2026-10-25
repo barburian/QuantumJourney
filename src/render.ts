@@ -38,7 +38,10 @@ export function refresh(): void {
   for (const node of editor.nodes) {
     const el = node.el;
     el.classList.toggle('idle', !result.done.has(node.id));
-    $('.tt', el).textContent = node.type === 'Q' ? `q${qubitIndex++}` : nodeTitle(node);
+    const title = $('.tt', el);
+    title.textContent = node.type === 'Q' ? `q${qubitIndex++}` : nodeTitle(node);
+    // Long custom gate names are cut short; hovering shows them in full.
+    if (node.type === 'Custom') title.title = title.textContent;
 
     if (node.type === 'Q') $('.st', el).textContent = INITIAL_STATES[node.init || 0];
 

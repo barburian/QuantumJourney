@@ -59,6 +59,8 @@ export interface NodeData {
   goal?: 'min' | 'max';
   /** Maximum steps of an Optimizer run. (Its learning rate is `p`.) */
   steps?: number;
+  /** How many times a custom gate runs in a row (default 1). */
+  rep?: number;
 }
 
 export interface CircuitNode extends NodeData {

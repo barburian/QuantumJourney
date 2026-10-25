@@ -24,8 +24,8 @@ export function loadGraph(g: Snapshot): void {
   clearAll();
   const ids = new Map<number, number>();
   for (const s of g.nodes) {
-    const { p, init, def, dagger, ctrl, cond, op, text, vals, goal, steps } = s;
-    ids.set(s.id, addNode(s.type, s.x, s.y, { p, init, def, dagger, ctrl, cond, op, text, vals, goal, steps }).id);
+    const { p, init, def, dagger, ctrl, cond, op, text, vals, goal, steps, rep } = s;
+    ids.set(s.id, addNode(s.type, s.x, s.y, { p, init, def, dagger, ctrl, cond, op, text, vals, goal, steps, rep }).id);
   }
   const remap = (list: Wire[] | undefined, into: Wire[]) => {
     for (const w of list ?? []) {

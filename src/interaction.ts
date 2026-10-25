@@ -1,6 +1,6 @@
 /* Pointer, keyboard and drag-and-drop handling on the canvas. */
 import { link, linkClassical, reaches } from './circuit';
-import { defs, pinLabels } from './custom';
+import { defs, pinLabels, repeats } from './custom';
 import { $, canvas } from './dom';
 import { canBeConditional, isGateType } from './gates';
 import { closeMatrix, matrixOpen, positionMatrix, toggleMatrix } from './matrixView';
@@ -240,6 +240,7 @@ function onInput(e: Event): void {
   if (!node || !['INPUT', 'TEXTAREA'].includes(field.tagName)) return;
   if (field.classList.contains('ht')) node.text = field.value;
   else if (field.classList.contains('steps')) node.steps = Math.max(1, Math.round(parseFloat(field.value) || 1));
+  else if (field.classList.contains('rep')) node.rep = repeats({ rep: parseFloat(field.value) });
   else node.p = parseFloat(field.value) || 0;
   refresh();
 }

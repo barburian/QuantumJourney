@@ -26,7 +26,7 @@ export const defs = new Map<string, CustomDef>();
 
 /** The plain data of a block, without anything the editor attached to it. */
 export function nodeData(node: NodeData): NodeData {
-  const { id, type, x, y, p, init, def, dagger, ctrl, cond, op, text, vals, goal, steps } = node;
+  const { id, type, x, y, p, init, def, dagger, ctrl, cond, op, text, vals, goal, steps, rep } = node;
   const n: NodeData = { id, type, x, y, p, init };
   if (def) n.def = def;
   if (dagger) n.dagger = true;
@@ -37,8 +37,16 @@ export function nodeData(node: NodeData): NodeData {
   if (vals) n.vals = vals.slice();
   if (goal) n.goal = goal;
   if (steps) n.steps = steps;
+  if (rep && rep > 1) n.rep = rep;
   return n;
 }
+
+/** Most times a custom gate can repeat, to keep expansions small. */
+export const MAX_REPEAT = 64;
+
+/** How many times a block runs in a row: its `rep`, clamped to 1…MAX_REPEAT. */
+export const repeats = (node: Pick<NodeData, 'rep'>): number =>
+  Math.min(MAX_REPEAT, Math.max(1, Math.round(node.rep ?? 1) || 1));
 
 const laneLabels = (lanes: number) => Array.from({ length: lanes }, (_, i) => `lane ${i}`);
 
@@ -57,10 +65,11 @@ export function pinLabels(node: Pick<NodeData, 'type' | 'def' | 'ctrl'>): { ins:
 }
 
 /** Header text of a block. */
-export function nodeTitle(node: Pick<NodeData, 'type' | 'def' | 'ctrl' | 'dagger'>): string {
+export function nodeTitle(node: Pick<NodeData, 'type' | 'def' | 'ctrl' | 'dagger' | 'rep'>): string {
   if (node.type !== 'Custom') return gateLabel(node.type);
   const name = defs.get(node.def!)?.name ?? 'Missing gate';
-  return `${node.ctrl ? 'C-' : ''}${name}${node.dagger ? '†' : ''}`;
+  const times = repeats(node);
+  return `${node.ctrl ? 'C-' : ''}${name}${node.dagger ? '†' : ''}${times > 1 ? ` ×${times}` : ''}`;
 }
 
 const customNodes = (def: CustomDef | undefined) => def?.nodes.filter((n) => n.type === 'Custom') ?? [];
@@ -234,7 +243,7 @@ function expand(def: CustomDef, dagger: boolean, controls: number, fresh: () => 
     if (n.type === 'Custom') {
       const sub = defs.get(n.def!);
       if (!sub) continue;
-      const e = expand(sub, !!n.dagger, (n.ctrl ? 1 : 0) + controls, fresh, depth + 1);
+      const e = expandBlock(n, sub, (n.ctrl ? 1 : 0) + controls, fresh, depth + 1);
       nodes.push(...e.nodes);
       wires.push(...e.wires);
       cwires.push(...e.cwires);
@@ -277,6 +286,23 @@ function expand(def: CustomDef, dagger: boolean, controls: number, fresh: () => 
 }
 
 /**
+ * Expands a Custom block, repeated: each copy's Out block feeds the next
+ * copy's In block on every lane, control lanes included.
+ */
+function expandBlock(n: NodeData, def: CustomDef, controls: number, fresh: () => number, depth = 0): Expansion {
+  const all = expand(def, !!n.dagger, controls, fresh, depth);
+  for (let k = 1; k < repeats(n); k++) {
+    const e = expand(def, !!n.dagger, controls, fresh, depth);
+    for (let pin = 0; pin < def.lanes + controls; pin++) all.wires.push({ a: all.outId, ai: pin, b: e.inId, bi: pin });
+    all.nodes.push(...e.nodes);
+    all.wires.push(...e.wires);
+    all.cwires.push(...e.cwires);
+    all.outId = e.outId;
+  }
+  return all;
+}
+
+/**
  * Simulates a circuit that may contain Custom blocks. Inside a definition
  * (the circuit has an In block) the In block's lanes start in |0⟩. Pin states
  * and `done` are reported for Custom blocks as for any other block.
@@ -296,7 +322,7 @@ export function simulateCircuit(
     const def = n.def ? defs.get(n.def) : undefined;
     if (n.type === 'Custom') {
       if (!def) continue;
-      const e = expand(def, !!n.dagger, n.ctrl ? 1 : 0, fresh);
+      const e = expandBlock(n, def, n.ctrl ? 1 : 0, fresh);
       flat.push(...e.nodes);
       flatWires.push(...e.wires);
       flatCwires.push(...e.cwires);

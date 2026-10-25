@@ -154,6 +154,38 @@ export const EXAMPLES: Example[] = [
     ],
   },
   {
+    name: 'Grover search ×N',
+    description: '3 qubits, marks |111⟩; try repeat ×1…×4 on the Grover step',
+    qubits: 3,
+    gates: [
+      // CCZ from CNOTs and T gates (the Toffoli circuit without its Hadamards).
+      {
+        id: 'ex-ccz',
+        name: 'CCZ',
+        lanes: 3,
+        ops: [
+          ['CNOT', 1, 2], ['P', 2, -0.25], ['CNOT', 0, 2], ['T', 2], ['CNOT', 1, 2], ['P', 2, -0.25],
+          ['CNOT', 0, 2], ['T', 1], ['T', 2], ['CNOT', 0, 1], ['T', 0], ['P', 1, -0.25], ['CNOT', 0, 1],
+        ],
+      },
+      // Oracle (flip the sign of |111⟩), then diffusion (reflect about the mean).
+      {
+        id: 'ex-grover-step',
+        name: 'Grover step',
+        lanes: 3,
+        ops: [
+          ['@ex-ccz', 0, 1, 2],
+          ['H', 0], ['H', 1], ['H', 2], ['X', 0], ['X', 1], ['X', 2],
+          ['@ex-ccz', 0, 1, 2],
+          ['X', 0], ['X', 1], ['X', 2], ['H', 0], ['H', 1], ['H', 2],
+        ],
+      },
+    ],
+    ops: [['H', 0], ['H', 1], ['H', 2], ['@ex-grover-step', 0, 1, 2], ['M', 0], ['M', 1], ['M', 2]],
+    // Two steps is best for 8 items (94.5%); more overshoots.
+    setup: { 3: { rep: 2 } },
+  },
+  {
     name: 'Quantum Fourier transform',
     description: '3 qubits',
     qubits: 3,
@@ -169,7 +201,7 @@ export const EXAMPLES: Example[] = [
 ];
 
 /** A node of a generated circuit, with the qubit lane it is laid out on (−1 for classical blocks). */
-export interface GraphNode extends SimNode, Partial<Pick<NodeData, 'def' | 'goal' | 'steps'>> {
+export interface GraphNode extends SimNode, Partial<Pick<NodeData, 'def' | 'goal' | 'steps' | 'rep'>> {
   row: number;
 }
 

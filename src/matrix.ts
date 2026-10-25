@@ -18,7 +18,7 @@ export const hasMatrix = (node: Pick<NodeData, 'type'>): boolean =>
  * significant bit, as in the results). Null when the block isn't unitary,
  * i.e. it collapses a measurement.
  */
-export function blockMatrix(block: Pick<NodeData, 'type' | 'p' | 'def' | 'dagger' | 'ctrl'>): Complex[][] | null {
+export function blockMatrix(block: Pick<NodeData, 'type' | 'p' | 'def' | 'dagger' | 'ctrl' | 'rep'>): Complex[][] | null {
   const lanes = pinLabels(block).ins.length;
   const size = 1 << lanes;
   const id = lanes + 1;

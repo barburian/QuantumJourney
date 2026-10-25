@@ -13,7 +13,8 @@ simulator.
 - **Live wires** show the state they carry: thickness = P(1), colour = phase (blue at 0),
   a pulsing glow = entangled with other qubits. Hover a wire for details.
 - **Custom gates**: collapse any selection into a reusable block, open it to edit it, and make
-  its inverse (†) or a controlled version (C) with one click. Custom gates can contain each other.
+  its inverse (†) or a controlled version (C) with one click, or **repeat** it N times in a row.
+  Custom gates can contain each other.
 - **Classical logic**: *Number* (slider) and *Math* blocks, angles driven by classical wires, and
   measurement bits that make later gates conditional, evaluated per measurement branch
 - **Variational algorithms (VQE, QAOA)**: an *Expectation* block measures ⟨H⟩ for a Hamiltonian you
@@ -21,7 +22,7 @@ simulator.
   chart
 - **Matrices**: the ⊞ button on any gate, custom ones included, shows its unitary matrix, updated
   live as you edit
-- Example circuits (Bell, GHZ, Deutsch, Deutsch–Jozsa, teleportation, shared angle, Grover, QFT,
+- Example circuits (Bell, GHZ, Deutsch, Deutsch–Jozsa, teleportation, shared angle, Grover, Grover ×N, QFT,
   mid-circuit measurement, VQE for H₂, QAOA MaxCut) and a
   library of your own circuits and gates, saved in the browser
 - Up to 8 qubits
@@ -57,7 +58,8 @@ The build uses relative paths, so `dist/` can be hosted from any folder (e.g. Gi
 - **Make gate** (Ctrl+G) turns the selection into a custom gate. Each qubit passing through the
   selection becomes a lane, ordered top to bottom; the gate appears under *Custom* in the toolbar.
 - On a custom gate, **†** runs it inverted and **C** adds a control pin (not available for gates
-  that measure). **Double-click** it to edit its subcircuit, between its *Inputs* and *Outputs*
+  that measure). **repeat ×** runs it several times in a row (up to 64), e.g. Grover iterations.
+  **Double-click** it to edit its subcircuit, between its *Inputs* and *Outputs*
   blocks; the results there assume all inputs start in |0⟩. Changes apply to every copy of the
   gate. **Back** or **Esc** returns.
 - **Classical wires** are orange and dashed; classical pins are small diamonds. One output can feed
@@ -92,6 +94,8 @@ The build uses relative paths, so `dist/` can be hosted from any folder (e.g. Gi
   own copy of the gates they use.
 - The **Deutsch** and **Deutsch–Jozsa** examples keep their oracle in a custom gate. Open it to
   change f: with no CNOTs inside (constant f) the inputs measure all 0.
+- **Grover search ×N** repeats its *Grover step* gate: 2 steps find |111⟩ 94.5% of the time; try
+  1, 3 and 4 to see the success rate rise and fall again.
 - **Drag the background** to pan, **scroll** to zoom, *Fit* to frame the circuit.
 - Results are shown in the basis |q(n−1)…q0⟩ (q0 is the rightmost bit).
 
@@ -134,6 +138,7 @@ tests/
   matrix.test.ts
   classical.test.ts
   variational.test.ts
+  repeat.test.ts
 ```
 
 `quantum-blueprints v1.html` is the original single-file prototype this project was built from.

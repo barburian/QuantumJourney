@@ -65,8 +65,8 @@ export function buildExample(example: Example): void {
       ids.set(g.id, addNode('Q', 20, 20 + g.row * ROW, { init: g.init }).id);
       continue;
     }
-    const { p, def, cond, text, vals, goal, steps } = g;
-    const node = addNode(g.type, x, 20 + g.row * ROW, { p, def, cond, text, vals, goal, steps });
+    const { p, def, cond, text, vals, goal, steps, rep } = g;
+    const node = addNode(g.type, x, 20 + g.row * ROW, { p, def, cond, text, vals, goal, steps, rep });
     // Classical blocks (row −1) sit above the qubits, clear of their wires; gates line up with their first qubit.
     if (g.row >= 0) alignInput(node, 20 + g.row * ROW + 22);
     else {
