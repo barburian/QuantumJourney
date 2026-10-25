@@ -3,9 +3,13 @@ import { pinLabels } from './custom';
 import { editor, nodeById } from './state';
 import type { CircuitNode, PinRef } from './types';
 
-/** True if `to` can be reached from `from` by following wires forward. */
+/** True if `to` can be reached from `from` by following quantum or classical wires forward. */
 export function reaches(from: number, to: number): boolean {
-  return from === to || editor.wires.some((w) => w.a === from && reaches(w.b, to));
+  return (
+    from === to ||
+    editor.wires.some((w) => w.a === from && reaches(w.b, to)) ||
+    editor.cwires.some((w) => w.a === from && reaches(w.b, to))
+  );
 }
 
 /**
@@ -18,6 +22,18 @@ export function link(out: PinRef, into: PinRef): void {
     (w) => !(w.a === out[0] && w.ai === out[1]) && !(w.b === into[0] && w.bi === into[1]),
   );
   editor.wires.push({ a: out[0], ai: out[1], b: into[0], bi: into[1] });
+}
+
+/**
+ * Wires a classical output to a classical input, replacing the input's
+ * previous wire. Unlike qubits, one value can feed any number of inputs.
+ * Returns false if it would create a loop.
+ */
+export function linkClassical(out: PinRef, into: PinRef): boolean {
+  if (out[0] === into[0] || reaches(into[0], out[0])) return false;
+  editor.cwires = editor.cwires.filter((w) => !(w.b === into[0] && w.bi === into[1]));
+  editor.cwires.push({ a: out[0], ai: out[1], b: into[0], bi: into[1] });
+  return true;
 }
 
 /**

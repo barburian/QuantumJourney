@@ -1,11 +1,11 @@
 import { freeOutput, link, sourceQubit } from './circuit';
 import { pinLabels } from './custom';
 import { escapeHtml, world } from './dom';
-import { GATES } from './gates';
+import { classicalPins, GATES, MATH_OPS } from './gates';
 import { hasMatrix } from './matrix';
 import { refresh } from './render';
 import { editor } from './state';
-import type { CircuitNode, GateType, NodeData, Point } from './types';
+import type { CircuitNode, GateType, NodeData, Point, Wire } from './types';
 import { centerOf } from './viewport';
 import { pinElement } from './wires';
 
@@ -14,9 +14,86 @@ const CHAIN_GAP = 44;
 /** Vertical spacing between qubits added from the toolbar. */
 const QUBIT_SPACING = 110;
 
-export type NodeOptions = Partial<Pick<NodeData, 'p' | 'init' | 'def' | 'dagger' | 'ctrl'>>;
+export type NodeOptions = Partial<
+  Pick<NodeData, 'p' | 'init' | 'def' | 'dagger' | 'ctrl' | 'cond' | 'op' | 'text' | 'vals' | 'goal' | 'steps'>
+>;
+
+/** A classical pin; `side` is the edge it sits on, which sets the direction its wires leave in. */
+const cpin = (k: 'ci' | 'co', i: number, label: string, side: 'l' | 'r' | 't' | 'b') =>
+  `<i class="cpin" data-k="${k}" data-i="${i}" data-side="${side}" title="${escapeHtml(label)}"></i>`;
+
+/** An Expectation block: a Hamiltonian typed as Pauli terms, and its value. */
+function expectationHtml(node: NodeData): string {
+  return (
+    `<div class="pr"><textarea class="ht" rows="3" spellcheck="false" aria-label="Hamiltonian">${escapeHtml(node.text ?? '')}</textarea></div>` +
+    '<p class="hint">Pauli terms, e.g. <code>0.5 Z0 Z1 − X2</code>; Z0 acts on q0.</p>' +
+    `<div class="rw"><i class="sp"></i><span class="cv"></span>${cpin('co', 0, '⟨H⟩', 'r')}</div>`
+  );
+}
+
+/** An Optimizer block: its cost input, one output per parameter, controls and a cost chart. */
+function optimizerHtml(node: NodeData): string {
+  const goal = node.goal ?? 'min';
+  const params = (node.vals ?? [])
+    .map((_, i) => `<div class="rw"><i class="sp"></i><span class="pval" data-v="${i}"></span>${cpin('co', i, `θ${i}`, 'r')}</div>`)
+    .join('');
+  return (
+    `<div class="rw">${cpin('ci', 0, 'cost', 'l')}<span>cost</span><i class="sp"></i></div>` +
+    '<div class="pr"><select class="goal" aria-label="Goal">' +
+    `<option value="min"${goal === 'min' ? ' selected' : ''}>Minimise</option>` +
+    `<option value="max"${goal === 'max' ? ' selected' : ''}>Maximise</option></select></div>` +
+    params +
+    '<div class="pr ob"><button class="p" data-a="add" title="Add a parameter">+ θ</button>' +
+    '<button class="p" data-a="del" title="Remove the last parameter">− θ</button></div>' +
+    '<div class="pr ob"><button class="p run" data-a="run"></button>' +
+    '<button class="p" data-a="step" title="One optimisation step">Step</button>' +
+    '<button class="p" data-a="reset" title="Random starting values">Reset</button></div>' +
+    `<div class="pr ob"><label>rate<input class="lr" type="number" step="0.01" min="0" value="${node.p}"></label>` +
+    `<label>steps<input class="steps" type="number" step="10" min="1" value="${node.steps ?? 200}"></label></div>` +
+    '<div class="pr"><svg class="chart" viewBox="0 0 160 48" preserveAspectRatio="none"></svg></div>' +
+    '<p class="hint os"></p>'
+  );
+}
+
+/** A classical block: Number, Math, Expectation or Optimizer. */
+function classicalHtml(node: NodeData): string {
+  const { ins } = classicalPins(node);
+  let html = `<div class="hd" style="background:${GATES[node.type].color}"><span class="tt"></span></div>`;
+  if (node.type === 'Obs') return html + expectationHtml(node);
+  if (node.type === 'Opt') return html + optimizerHtml(node);
+  if (node.type === 'Num') {
+    return (
+      html +
+      `<div class="rw"><i class="sp"></i><input class="nv" type="number" step="0.05" value="${node.p}" ` +
+      `aria-label="Value"><i class="sp"></i>${cpin('co', 0, 'value', 'r')}</div>` +
+      `<div class="pr"><input class="ns" type="range" min="-2" max="2" step="0.01" value="${node.p}" aria-label="Value"></div>`
+    );
+  }
+  const options = MATH_OPS.map((op) => `<option${op === (node.op ?? '+') ? ' selected' : ''}>${op}</option>`).join('');
+  html += `<div class="pr"><select class="op" aria-label="Operation">${options}</select></div>`;
+  ins.forEach((label, i) => (html += `<div class="rw">${cpin('ci', i, label, 'l')}<span>${label}</span><i class="sp"></i></div>`));
+  return html + `<div class="rw"><i class="sp"></i><span class="cv"></span>${cpin('co', 0, 'out', 'r')}</div>`;
+}
+
+/** Classical pins on the top (inputs) and bottom (outputs) edges of a quantum block. */
+function edgePins(node: NodeData): string {
+  const { ins, outs } = classicalPins(node);
+  const row = (pins: string[], k: 'ci' | 'co', side: 't' | 'b') =>
+    pins.length
+      ? `<div class="cpins ${side === 't' ? 'top' : 'bottom'}">` +
+        pins.map((label, i) => `<span class="cpw">${cpin(k, i, label, side)}<small>${label}</small></span>`).join('') +
+        '</div>'
+      : '';
+  return row(ins, 'ci', 't') + row(outs, 'co', 'b');
+}
 
 function nodeHtml(node: NodeData): string {
+  const gate = GATES[node.type];
+  if (gate.kind === 'cl') return classicalHtml(node);
+  return quantumHtml(node) + edgePins(node);
+}
+
+function quantumHtml(node: NodeData): string {
   const gate = GATES[node.type];
   const { ins, outs } = pinLabels(node);
   const pinIn = (i: number) => `<i class="pin" data-k="i" data-i="${i}"></i>`;
@@ -108,15 +185,24 @@ export function addNode(type: GateType, x: number, y: number, opts: NodeOptions 
     type,
     x,
     y,
-    p: opts.p ?? (gate.param ? 0.5 : 0),
+    p: opts.p ?? (gate.param || type === 'Num' ? 0.5 : 0),
     init: opts.init || 0,
     el,
   };
   if (opts.def) node.def = opts.def;
   if (opts.dagger) node.dagger = true;
   if (opts.ctrl) node.ctrl = true;
+  if (opts.cond) node.cond = true;
+  if (opts.op) node.op = opts.op;
+  if (type === 'Obs') node.text = opts.text ?? 'Z0';
+  if (type === 'Opt') {
+    node.vals = opts.vals?.slice() ?? [0.1];
+    node.goal = opts.goal ?? 'min';
+    node.steps = opts.steps ?? 200;
+    if (opts.p == null) node.p = 0.05; // learning rate
+  }
 
-  const kind = gate.kind === 'full' ? 'full' : `t ${gate.kind}`;
+  const kind = gate.kind === 'full' ? 'full' : gate.kind === 'cl' ? `full cl ${type.toLowerCase()}` : `t ${gate.kind}`;
   const extra = gate.probe ? ' probe' : type === 'Custom' ? ' custom' : type === 'In' || type === 'Out' ? ' io' : '';
   el.className = `node ${kind}${extra}`;
   el.dataset.id = String(node.id);
@@ -133,7 +219,11 @@ export function removeNodes(nodes: Iterable<CircuitNode>): void {
   if (!gone.size) return;
   for (const n of gone) n.el.remove();
   editor.nodes = editor.nodes.filter((n) => !gone.has(n));
-  editor.wires = editor.wires.filter((w) => editor.nodes.some((n) => n.id === w.a) && editor.nodes.some((n) => n.id === w.b));
+  const kept = (w: Wire) => editor.nodes.some((n) => n.id === w.a) && editor.nodes.some((n) => n.id === w.b);
+  editor.wires = editor.wires.filter(kept);
+  const before = editor.cwires;
+  editor.cwires = editor.cwires.filter(kept);
+  for (const w of before) if (!kept(w)) dropCondition(w);
   setSelection([...editor.selection].filter((n) => !gone.has(n)));
   if (editor.last && gone.has(editor.last)) editor.last = null;
   refresh();
@@ -143,10 +233,34 @@ export function removeNode(node: CircuitNode): void {
   removeNodes([node]);
 }
 
+/** Makes a gate conditional, adding its "if" pin; returns that pin's index. */
+export function makeConditional(node: CircuitNode): number {
+  if (!node.cond) {
+    node.cond = true;
+    rebuildNode(node);
+  }
+  return classicalPins(node).ins.indexOf('if');
+}
+
+/** After a classical wire was removed: a gate whose "if" wire it was is no longer conditional. */
+export function dropCondition(w: Wire): void {
+  const node = editor.nodes.find((n) => n.id === w.b);
+  if (!node?.cond || classicalPins(node).ins[w.bi] !== 'if') return;
+  node.cond = false;
+  rebuildNode(node);
+}
+
+/** Removes the classical wire at `index`. */
+export function removeClassicalWire(index: number): void {
+  const [w] = editor.cwires.splice(index, 1);
+  if (w) dropCondition(w);
+}
+
 export function clearAll(): void {
   for (const n of editor.nodes) n.el.remove();
   editor.nodes = [];
   editor.wires = [];
+  editor.cwires = [];
   editor.selection = new Set();
   editor.selected = editor.last = null;
 }

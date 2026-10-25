@@ -17,21 +17,30 @@ export interface CustomDef {
   /** The subcircuit, including exactly one In and one Out block. */
   nodes: NodeData[];
   wires: Wire[];
+  /** Classical wires inside the subcircuit. */
+  cwires?: Wire[];
 }
 
 /** All custom gate definitions, by id. */
 export const defs = new Map<string, CustomDef>();
 
 /** The plain data of a block, without anything the editor attached to it. */
-export function nodeData({ id, type, x, y, p, init, def, dagger, ctrl }: NodeData): NodeData {
+export function nodeData(node: NodeData): NodeData {
+  const { id, type, x, y, p, init, def, dagger, ctrl, cond, op, text, vals, goal, steps } = node;
   const n: NodeData = { id, type, x, y, p, init };
   if (def) n.def = def;
   if (dagger) n.dagger = true;
   if (ctrl) n.ctrl = true;
+  if (cond) n.cond = true;
+  if (op) n.op = op;
+  if (text != null) n.text = text;
+  if (vals) n.vals = vals.slice();
+  if (goal) n.goal = goal;
+  if (steps) n.steps = steps;
   return n;
 }
 
-const laneLabels =(lanes: number) => Array.from({ length: lanes }, (_, i) => `lane ${i}`);
+const laneLabels = (lanes: number) => Array.from({ length: lanes }, (_, i) => `lane ${i}`);
 
 /** Input and output pin labels of any block, including custom ones. */
 export function pinLabels(node: Pick<NodeData, 'type' | 'def' | 'ctrl'>): { ins: string[]; outs: string[] } {
@@ -54,7 +63,7 @@ export function nodeTitle(node: Pick<NodeData, 'type' | 'def' | 'ctrl' | 'dagger
   return `${node.ctrl ? 'C-' : ''}${name}${node.dagger ? '†' : ''}`;
 }
 
-const customNodes =(def: CustomDef | undefined) => def?.nodes.filter((n) => n.type === 'Custom') ?? [];
+const customNodes = (def: CustomDef | undefined) => def?.nodes.filter((n) => n.type === 'Custom') ?? [];
 
 /** True if definition `id` is `target` or uses it, directly or nested. */
 export function uses(id: string, target: string): boolean {
@@ -79,21 +88,26 @@ export interface Grouping {
   sources: (PinRef | null)[];
   /** Per lane: the outside input it fed, if any. */
   targets: (PinRef | null)[];
+  /** Classical wires between the group and the rest of the circuit, which a gate can't keep. */
+  cut: number;
 }
 
 /**
  * Turns blocks into a definition. Every input not fed from inside the group
  * starts a lane; the lane follows the qubit through the group to the output
  * where it leaves. Lanes are ordered top to bottom by `pinY`, the height of
- * each lane's first input pin. Qubit and In/Out blocks are left out.
+ * each lane's first input pin. Qubit and In/Out blocks are left out, and so are
+ * Expectation and Optimizer blocks, which work on the whole circuit; other
+ * classical blocks and the classical wires among them go in.
  */
 export function groupNodes(
   selected: readonly NodeData[],
   wires: readonly Wire[],
   name: string,
   pinY: (node: NodeData, pin: number) => number = (node, pin) => node.y + pin * 30,
+  cwires: readonly Wire[] = [],
 ): Grouping | null {
-  const nodes = selected.filter((n) => n.type !== 'Q' && n.type !== 'In' && n.type !== 'Out');
+  const nodes = selected.filter((n) => !['Q', 'In', 'Out', 'Obs', 'Opt'].includes(n.type));
   if (!nodes.length) return null;
   const inside = new Set(nodes.map((n) => n.id));
 
@@ -136,18 +150,26 @@ export function groupNodes(
       ...lanes.map((l, k) => ({ a: inId, ai: k, b: l.node.id, bi: l.pin })),
       ...lanes.map((l, k) => ({ a: l.exit[0], ai: l.exit[1], b: outId, bi: k })),
     ],
+    cwires: cwires.filter((w) => inside.has(w.a) && inside.has(w.b)).map((w) => ({ ...w })),
   };
-  return { def, sources: lanes.map((l) => l.source), targets: lanes.map((l) => l.target) };
+  const cut = cwires.filter((w) => inside.has(w.a) !== inside.has(w.b)).length;
+  return { def, sources: lanes.map((l) => l.source), targets: lanes.map((l) => l.target), cut };
 }
 
 /* ---------- expansion for simulation ---------- */
 
-/** The inverse of one block. Wires are reversed separately, so In and Out swap roles. */
-function invert(n: NodeData): NodeData {
+/** A block being expanded; `sign` flips an angle that arrives on a classical wire. */
+type Local = NodeData & { sign?: number };
+
+/**
+ * The inverse of one block. Quantum wires are reversed separately, so In and
+ * Out swap roles; classical blocks and wires stay as they are.
+ */
+function invert(n: Local): Local {
   switch (n.type) {
     case 'S': return { ...n, type: 'P', p: -0.5 };
     case 'T': return { ...n, type: 'P', p: -0.25 };
-    case 'Rx': case 'Ry': case 'Rz': case 'P': case 'CP': return { ...n, p: -n.p };
+    case 'Rx': case 'Ry': case 'Rz': case 'P': case 'CP': return { ...n, p: -n.p, sign: -(n.sign ?? 1) };
     case 'In': return { ...n, type: 'Out' };
     case 'Out': return { ...n, type: 'In' };
     case 'Custom': return { ...n, dagger: !n.dagger };
@@ -163,7 +185,7 @@ function runOrder(nodes: readonly NodeData[], wires: readonly Wire[]): NodeData[
   for (let progress = true; progress; ) {
     progress = false;
     for (const n of nodes) {
-      if (fed.has(n.id) || n.type === 'Out' || n.type === 'Q') continue;
+      if (fed.has(n.id) || n.type === 'Out' || n.type === 'Q' || GATES[n.type].kind === 'cl') continue;
       const ok = pinLabels(n).ins.every((_, i) => {
         const w = wires.find((w) => w.b === n.id && w.bi === i);
         return w && fed.has(w.a);
@@ -181,9 +203,14 @@ function runOrder(nodes: readonly NodeData[], wires: readonly Wire[]): NodeData[
 interface Expansion {
   nodes: SimNode[];
   wires: Wire[];
+  cwires: Wire[];
   inId: number;
   outId: number;
 }
+
+const toSim = (n: Local, id: number, arity: number | undefined, controls: number): SimNode => ({
+  id, type: n.type, p: n.p, init: n.init, cond: n.cond, op: n.op, text: n.text, vals: n.vals, sign: n.sign, arity, controls,
+});
 
 /**
  * Expands a definition into primitive blocks with fresh ids. With `controls`
@@ -193,11 +220,12 @@ interface Expansion {
  */
 function expand(def: CustomDef, dagger: boolean, controls: number, fresh: () => number, depth = 0): Expansion {
   if (depth > 32) throw new Error(`Custom gate "${def.name}" contains itself`);
-  const local = dagger ? def.nodes.map(invert) : def.nodes;
+  const local: Local[] = dagger ? def.nodes.map(invert) : def.nodes;
   const localWires = dagger ? def.wires.map((w) => ({ a: w.b, ai: w.bi, b: w.a, bi: w.ai })) : def.wires;
 
   const nodes: SimNode[] = [];
   const wires: Wire[] = [];
+  const cwires: Wire[] = [];
   /** Local id → [id that receives its input wires, id its output wires leave from]. */
   const ends = new Map<number, [number, number]>();
   let inId = 0, outId = 0;
@@ -209,12 +237,13 @@ function expand(def: CustomDef, dagger: boolean, controls: number, fresh: () => 
       const e = expand(sub, !!n.dagger, (n.ctrl ? 1 : 0) + controls, fresh, depth + 1);
       nodes.push(...e.nodes);
       wires.push(...e.wires);
+      cwires.push(...e.cwires);
       ends.set(n.id, [e.inId, e.outId]);
       continue;
     }
     const id = fresh();
     const boundary = n.type === 'In' || n.type === 'Out';
-    nodes.push({ id, type: n.type, p: n.p, init: 0, arity: boundary ? def.lanes : GATES[n.type].ins.length, controls });
+    nodes.push(toSim(n, id, boundary ? def.lanes : GATES[n.type].ins.length, controls));
     ends.set(n.id, [id, id]);
     if (n.type === 'In') inId = id;
     if (n.type === 'Out') outId = id;
@@ -223,6 +252,11 @@ function expand(def: CustomDef, dagger: boolean, controls: number, fresh: () => 
   for (const w of localWires) {
     const a = ends.get(w.a), b = ends.get(w.b);
     if (a && b) wires.push({ a: a[1], ai: w.ai, b: b[0], bi: w.bi });
+  }
+  // Classical wires only join primitive blocks of this definition.
+  for (const w of def.cwires ?? []) {
+    const a = ends.get(w.a), b = ends.get(w.b);
+    if (a && b) cwires.push({ a: a[0], ai: w.ai, b: b[0], bi: w.bi });
   }
 
   if (controls) {
@@ -239,7 +273,7 @@ function expand(def: CustomDef, dagger: boolean, controls: number, fresh: () => 
     }
   }
 
-  return { nodes, wires, inId, outId };
+  return { nodes, wires, cwires, inId, outId };
 }
 
 /**
@@ -247,11 +281,14 @@ function expand(def: CustomDef, dagger: boolean, controls: number, fresh: () => 
  * (the circuit has an In block) the In block's lanes start in |0⟩. Pin states
  * and `done` are reported for Custom blocks as for any other block.
  */
-export function simulateCircuit(nodes: readonly NodeData[], wires: readonly Wire[]): SimResult {
+export function simulateCircuit(
+  nodes: readonly NodeData[], wires: readonly Wire[], cwires: readonly Wire[] = [],
+): SimResult {
   let lastId = 0;
   const fresh = () => --lastId; // negative, so never equal to a real block id
   const flat: SimNode[] = [];
   const flatWires: Wire[] = [];
+  const flatCwires: Wire[] = cwires.map((w) => ({ ...w }));
   const ends = new Map<number, [number, number]>();
   const instances: { id: number; outId: number; pins: number }[] = [];
 
@@ -262,6 +299,7 @@ export function simulateCircuit(nodes: readonly NodeData[], wires: readonly Wire
       const e = expand(def, !!n.dagger, n.ctrl ? 1 : 0, fresh);
       flat.push(...e.nodes);
       flatWires.push(...e.wires);
+      flatCwires.push(...e.cwires);
       ends.set(n.id, [e.inId, e.outId]);
       instances.push({ id: n.id, outId: e.outId, pins: def.lanes + (n.ctrl ? 1 : 0) });
       continue;
@@ -274,7 +312,7 @@ export function simulateCircuit(nodes: readonly NodeData[], wires: readonly Wire
       }
     }
     const boundary = n.type === 'In' || n.type === 'Out';
-    flat.push({ id: n.id, type: n.type, p: n.p, init: n.init, arity: boundary ? def?.lanes ?? 0 : undefined });
+    flat.push(toSim(n, n.id, boundary ? def?.lanes ?? 0 : undefined, 0));
     ends.set(n.id, [n.id, n.id]);
   }
 
@@ -283,7 +321,7 @@ export function simulateCircuit(nodes: readonly NodeData[], wires: readonly Wire
     if (a && b) flatWires.push({ a: a[1], ai: w.ai, b: b[0], bi: w.bi });
   }
 
-  const result = simulate(flat, flatWires);
+  const result = simulate(flat, flatWires, flatCwires);
   for (const inst of instances) {
     if (result.done.has(inst.outId)) result.done.add(inst.id);
     for (let k = 0; k < inst.pins; k++) {

@@ -1,5 +1,5 @@
 import { defs, groupNodes, pinLabels, type CustomDef } from './custom';
-import { GATES } from './gates';
+import { classicalPins, GATES } from './gates';
 import type { SimNode } from './simulator';
 import type { GateType, NodeData, Wire } from './types';
 
@@ -17,6 +17,14 @@ export interface GateSpec {
   ops: Op[];
 }
 
+/** A classical wire from output `out` (default 0) of op `from` to a named input of op `to` (op indices). */
+export interface Link {
+  from: number;
+  out?: number;
+  to: number;
+  pin: 'θ' | 'if' | 'cost';
+}
+
 export interface Example {
   name: string;
   description: string;
@@ -25,6 +33,41 @@ export interface Example {
   /** Custom gates the example uses. */
   gates?: GateSpec[];
   ops: Op[];
+  links?: Link[];
+  /** Extra settings for some ops' blocks, by op index (e.g. a Hamiltonian's text). */
+  setup?: Record<number, Partial<NodeData>>;
+}
+
+/** H₂ at 0.735 Å in a minimal basis, reduced to two qubits (electronic energy, in hartree). */
+const H2 = '-1.0524 + 0.3979 Z0 - 0.3979 Z1 - 0.0113 Z0 Z1 + 0.1809 X0 X1';
+
+/** QAOA (p = 1) for MaxCut on the 4-node ring 0–1–2–3–0. */
+function qaoaRing(): Example {
+  const edges = [[0, 1], [1, 2], [2, 3], [3, 0]];
+  const ops: Op[] = [['Obs'], ['Opt'], ['H', 0], ['H', 1], ['H', 2], ['H', 3]];
+  const links: Link[] = [{ from: 0, to: 1, pin: 'cost' }];
+  // Cost layer: exp(−iγ Z_i Z_j) on every edge, as CNOT · Rz(γ) · CNOT.
+  for (const [i, j] of edges) {
+    ops.push(['CNOT', i, j], ['Rz', j], ['CNOT', i, j]);
+    links.push({ from: 1, out: 0, to: ops.length - 2, pin: 'θ' });
+  }
+  // Mixer layer: Rx(β) on every qubit.
+  for (let q = 0; q < 4; q++) {
+    ops.push(['Rx', q]);
+    links.push({ from: 1, out: 1, to: ops.length - 1, pin: 'θ' });
+  }
+  return {
+    name: 'QAOA MaxCut',
+    description: '4-node ring: Run the Optimizer to maximise the cut',
+    qubits: 4,
+    ops,
+    links,
+    setup: {
+      0: { text: '2 - 0.5 Z0 Z1 - 0.5 Z1 Z2 - 0.5 Z2 Z3 - 0.5 Z3 Z0' },
+      // From (0.2, 0.2) the climb stalls on the saddle at (0, 0); this start reaches the optimum.
+      1: { vals: [-0.1, 0.1], goal: 'max', p: 0.05, steps: 300 },
+    },
+  };
 }
 
 export const EXAMPLES: Example[] = [
@@ -58,6 +101,50 @@ export const EXAMPLES: Example[] = [
     ],
   },
   {
+    name: 'Teleportation',
+    description: 'q0’s state arrives on q2, fixed up by the measured bits',
+    qubits: 3,
+    ops: [
+      ['Ry', 0, 0.6], // 0: the state to send
+      ['H', 1], ['CNOT', 1, 2], // 1–2: shared Bell pair
+      ['CNOT', 0, 1], ['H', 0], // 3–4: Bell measurement…
+      ['M', 0, 1], ['M', 1, 1], // 5–6: …collapsing q0 and q1
+      ['X', 2], ['Z', 2], // 7–8: corrections, if the bits say so
+      ['Probe', 2],
+    ],
+    links: [
+      { from: 6, to: 7, pin: 'if' },
+      { from: 5, to: 8, pin: 'if' },
+    ],
+  },
+  {
+    name: 'Shared angle',
+    description: 'one Number drives three rotations',
+    qubits: 3,
+    ops: [['Num', 0.25], ['Ry', 0], ['Ry', 1], ['Ry', 2]],
+    links: [
+      { from: 0, to: 1, pin: 'θ' },
+      { from: 0, to: 2, pin: 'θ' },
+      { from: 0, to: 3, pin: 'θ' },
+    ],
+  },
+  {
+    name: 'VQE: H₂ molecule',
+    description: 'Run the Optimizer to find the ground energy (−1.857 Ha)',
+    qubits: 2,
+    ops: [['Obs'], ['Opt'], ['Ry', 0], ['Ry', 1], ['CNOT', 0, 1]],
+    links: [
+      { from: 0, to: 1, pin: 'cost' },
+      { from: 1, out: 0, to: 2, pin: 'θ' },
+      { from: 1, out: 1, to: 3, pin: 'θ' },
+    ],
+    setup: {
+      0: { text: H2 },
+      1: { vals: [0.1, 0.1], goal: 'min', p: 0.05, steps: 200 },
+    },
+  },
+  qaoaRing(),
+  {
     name: 'Grover search',
     description: '2 qubits, marks |11⟩',
     qubits: 2,
@@ -81,18 +168,20 @@ export const EXAMPLES: Example[] = [
   },
 ];
 
-/** A node of a generated circuit, with the qubit lane it is laid out on. */
-export interface GraphNode extends SimNode {
+/** A node of a generated circuit, with the qubit lane it is laid out on (−1 for classical blocks). */
+export interface GraphNode extends SimNode, Partial<Pick<NodeData, 'def' | 'goal' | 'steps'>> {
   row: number;
-  def?: string;
 }
 
 /**
  * Turns an op list into a circuit graph (ids start at 1): one Qubit node per
  * qubit, then one node per op, each wired after the previous block on its
- * qubits. Custom gates used by the ops must already be registered.
+ * qubits, plus the classical `links`. Custom gates used by the ops must
+ * already be registered.
  */
-export function opsToGraph(qubits: number, ops: Op[], init: number[] = []): { nodes: GraphNode[]; wires: Wire[] } {
+export function opsToGraph(
+  qubits: number, ops: Op[], init: number[] = [], links: Link[] = [], setup: Example['setup'] = {},
+): { nodes: GraphNode[]; wires: Wire[]; cwires: Wire[] } {
   const nodes: GraphNode[] = [];
   const wires: Wire[] = [];
   const last: [number, number][] = [];
@@ -109,7 +198,7 @@ export function opsToGraph(qubits: number, ops: Op[], init: number[] = []): { no
     const arity = pinLabels({ type, def: custom }).ins.length;
     const qs = args.slice(0, arity);
     const param = args[arity];
-    const node: GraphNode = { id: ++id, type, p: param ?? (GATES[type].param ? 0.5 : 0), init: 0, row: qs[0] };
+    const node: GraphNode = { id: ++id, type, p: param ?? (GATES[type].param ? 0.5 : 0), init: 0, row: qs[0] ?? -1 };
     if (custom) node.def = custom;
     nodes.push(node);
     qs.forEach((q, k) => {
@@ -118,7 +207,18 @@ export function opsToGraph(qubits: number, ops: Op[], init: number[] = []): { no
     });
   }
 
-  return { nodes, wires };
+  // Op i is node qubits + 1 + i.
+  const opNode = (i: number) => nodes[qubits + i];
+  for (const [i, extra] of Object.entries(setup)) Object.assign(opNode(Number(i)), extra);
+  for (const l of links) if (l.pin === 'if') opNode(l.to).cond = true;
+  const cwires = links.map((l) => ({
+    a: opNode(l.from).id,
+    ai: l.out ?? 0,
+    b: opNode(l.to).id,
+    bi: classicalPins(opNode(l.to)).ins.indexOf(l.pin),
+  }));
+
+  return { nodes, wires, cwires };
 }
 
 /** Builds a custom gate definition from an op list, with lane k being qubit k. */

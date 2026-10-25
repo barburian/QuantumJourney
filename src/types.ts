@@ -4,10 +4,14 @@ export type GateType =
   | 'Rx' | 'Ry' | 'Rz' | 'P'
   | 'CNOT' | 'CZ' | 'SWAP' | 'CP'
   | 'M' | 'Probe'
-  | 'Custom' | 'In' | 'Out';
+  | 'Custom' | 'In' | 'Out'
+  | 'Num' | 'Math' | 'Obs' | 'Opt';
 
-/** How a block is drawn: qubit source, square tile, rotation tile, or full card with labelled rows. */
-export type GateKind = 'q' | 'sq' | 'rot' | 'full';
+/**
+ * How a block is drawn: qubit source, square tile, rotation tile, full card
+ * with labelled rows, or classical block.
+ */
+export type GateKind = 'q' | 'sq' | 'rot' | 'full' | 'cl';
 
 export interface GateDef {
   color: string;
@@ -26,8 +30,9 @@ export interface GateDef {
 
 /**
  * The serialisable part of a block. `p` is the angle (in multiples of π) for
- * parametrised gates and the collapse flag (0 = peek, 1 = collapse) for
- * measurements. `init` indexes the initial state of a qubit.
+ * parametrised gates, the collapse flag (0 = peek, 1 = collapse) for
+ * measurements and the value of a Number block. `init` indexes the initial
+ * state of a qubit.
  */
 export interface NodeData {
   id: number;
@@ -42,6 +47,18 @@ export interface NodeData {
   dagger?: boolean;
   /** Custom block has an extra control pin after its lanes. */
   ctrl?: boolean;
+  /** Gate has a classical "if" input: it only acts when that value is non-zero. */
+  cond?: boolean;
+  /** Operation of a Math block; see MATH_OPS. */
+  op?: string;
+  /** Hamiltonian of an Expectation block, as text (see hamiltonian.ts). */
+  text?: string;
+  /** Current parameter values of an Optimizer block, one per output. */
+  vals?: number[];
+  /** Whether an Optimizer lowers or raises its cost. */
+  goal?: 'min' | 'max';
+  /** Maximum steps of an Optimizer run. (Its learning rate is `p`.) */
+  steps?: number;
 }
 
 export interface CircuitNode extends NodeData {

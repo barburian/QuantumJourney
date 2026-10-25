@@ -1,5 +1,6 @@
 /* The unitary matrix of a block, worked out by simulating it on every basis state. */
 import { pinLabels, simulateCircuit } from './custom';
+import { GATES } from './gates';
 import type { NodeData, Wire } from './types';
 
 export interface Complex {
@@ -9,7 +10,7 @@ export interface Complex {
 
 /** Blocks that are not gates and so have no matrix. */
 export const hasMatrix = (node: Pick<NodeData, 'type'>): boolean =>
-  !['Q', 'In', 'Out', 'M', 'Probe'].includes(node.type);
+  !['Q', 'In', 'Out', 'M', 'Probe'].includes(node.type) && GATES[node.type].kind !== 'cl';
 
 /**
  * The matrix of a block, as rows of columns: entry [r][c] is ⟨r|U|c⟩. Basis

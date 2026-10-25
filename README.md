@@ -14,9 +14,15 @@ simulator.
   a pulsing glow = entangled with other qubits. Hover a wire for details.
 - **Custom gates**: collapse any selection into a reusable block, open it to edit it, and make
   its inverse (†) or a controlled version (C) with one click. Custom gates can contain each other.
+- **Classical logic**: *Number* (slider) and *Math* blocks, angles driven by classical wires, and
+  measurement bits that make later gates conditional, evaluated per measurement branch
+- **Variational algorithms (VQE, QAOA)**: an *Expectation* block measures ⟨H⟩ for a Hamiltonian you
+  type, and an *Optimizer* block tunes rotation angles to minimise or maximise it, with a live cost
+  chart
 - **Matrices**: the ⊞ button on any gate, custom ones included, shows its unitary matrix, updated
   live as you edit
-- Example circuits (Bell, GHZ, Deutsch, Deutsch–Jozsa, Grover, QFT, mid-circuit measurement) and a
+- Example circuits (Bell, GHZ, Deutsch, Deutsch–Jozsa, teleportation, shared angle, Grover, QFT,
+  mid-circuit measurement, VQE for H₂, QAOA MaxCut) and a
   library of your own circuits and gates, saved in the browser
 - Up to 8 qubits
 
@@ -54,6 +60,30 @@ The build uses relative paths, so `dist/` can be hosted from any folder (e.g. Gi
   that measure). **Double-click** it to edit its subcircuit, between its *Inputs* and *Outputs*
   blocks; the results there assume all inputs start in |0⟩. Changes apply to every copy of the
   gate. **Back** or **Esc** returns.
+- **Classical wires** are orange and dashed; classical pins are small diamonds. One output can feed
+  many inputs.
+  - *Number* gives a value (slider from −2 to 2, or type any number). *Math* combines two values:
+    + − × ÷, or the logic operations xor, and, or, not (any non-zero value counts as 1).
+  - Rotation gates have a **θ** pin on top, in multiples of π: wire a value into it to drive the
+    angle, e.g. one Number for several gates.
+  - Measurements have a **bit** pin underneath. Wiring it switches the measurement to Collapse
+    (only a collapsed measurement has a bit).
+  - Drop a classical wire **anywhere on a gate** to make it conditional: it gains an **if** pin and
+    only acts when the value is non-zero. Delete that wire and the gate is unconditional again.
+  - Because measurements split the simulation into branches, each branch uses its own bits: this is
+    how the *Teleportation* example applies its X and Z corrections.
+  - A custom gate can contain Number and Math blocks, but classical wires can't cross its edge.
+- **Variational loops**:
+  - *Expectation* takes a Hamiltonian as a sum of Pauli terms, e.g.
+    `-1.05 + 0.4 Z0 - 0.4 Z1 + 0.18 X0 X1` (Z0 acts on q0), and outputs ⟨H⟩ for the final state,
+    averaged over measurement branches.
+  - *Optimizer* has a **cost** input and one output per parameter (θ0, θ1, …; add or remove them with
+    + θ / − θ). Wire the outputs into rotation angles (directly or through Math blocks) and an
+    Expectation into cost, choose Minimise or Maximise, then **Run** (or **Step**). Each step
+    estimates the gradient by finite differences and takes an Adam step; the chart shows the cost
+    so far. *rate* is the step size, *steps* the most steps per run; **Reset** picks a random start.
+  - The *VQE: H₂ molecule* example reaches the ground energy −1.857 Ha; *QAOA MaxCut* reaches
+    ⟨cut⟩ = 3 on a 4-node ring, with the two maximum cuts as the most likely outcomes.
 - Hover or select a gate and press **⊞** (top right) to see its matrix; cell colour is the phase.
   *Pin 0 last* matches the results panel (pin 0 is the rightmost bit); *Pin 0 first* is the usual
   textbook order. Up to 4 qubits show numbers, 5–6 qubits colours only (hover for values).
@@ -78,6 +108,9 @@ src/
   scope.ts            making, editing and deleting custom gates
   gateStore.ts        storing custom gates in the browser
   matrix.ts           a block's unitary matrix (no DOM; unit tested)
+  hamiltonian.ts      Pauli-sum Hamiltonians and expectation values (no DOM; unit tested)
+  optimizer.ts        finite-difference gradients and Adam (no DOM; unit tested)
+  optimizerRun.ts     running Optimizer blocks on the live circuit
   matrixView.ts       the matrix panel
   palette.ts          gate buttons, including custom gates
   snapshot.ts         circuit ⇄ plain data
@@ -99,6 +132,8 @@ tests/
   simulator.test.ts
   custom.test.ts
   matrix.test.ts
+  classical.test.ts
+  variational.test.ts
 ```
 
 `quantum-blueprints v1.html` is the original single-file prototype this project was built from.

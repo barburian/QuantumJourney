@@ -1,7 +1,7 @@
 /* Making, editing and deleting custom gates. */
 import { link } from './circuit';
 import { defs, groupNodes } from './custom';
-import { $ } from './dom';
+import { $, notify } from './dom';
 import { gatesChanged } from './gateStore';
 import { addNode, removeNodes, select, setSelection } from './nodes';
 import { renderGatePalette } from './palette';
@@ -27,9 +27,21 @@ export function groupSelection(): void {
     editor.wires,
     freshGateName(),
     (node, pin) => centerOf(pinElement(node.id, 'i', pin))[1],
+    editor.cwires,
   );
   if (!grouping) return;
-  const { def, sources, targets } = grouping;
+  const { def, sources, targets, cut } = grouping;
+  if (!def.lanes) {
+    notify('A gate needs at least one qubit passing through it.');
+    return;
+  }
+  if (cut) {
+    notify(
+      `Can’t make a gate: ${cut} classical wire${cut > 1 ? 's' : ''} would cross its edge. ` +
+        'Include the Number/Math blocks they come from, or remove those wires.',
+    );
+    return;
+  }
   defs.set(def.id, def);
 
   const members = new Set(def.nodes.map((n) => n.id));

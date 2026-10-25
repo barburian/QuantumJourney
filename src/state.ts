@@ -4,13 +4,15 @@ import type { CircuitNode, NodeData, Wire } from './types';
 /** A custom gate being edited, and what to return to. */
 export interface Scope {
   defId: string;
-  parent: { nodes: NodeData[]; wires: Wire[]; view: { zoom: number; x: number; y: number } };
+  parent: { nodes: NodeData[]; wires: Wire[]; cwires: Wire[]; view: { zoom: number; x: number; y: number } };
 }
 
 /** The circuit being edited, plus editor selection state. */
 export const editor = {
   nodes: [] as CircuitNode[],
   wires: [] as Wire[],
+  /** Classical wires: from a classical output (pin index 0) to a classical input. */
+  cwires: [] as Wire[],
   lastId: 0,
   /** Selected blocks. */
   selection: new Set<CircuitNode>(),

@@ -2,6 +2,7 @@
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  --cwire: #d97706;
   --bg: #eef0f5;
   --panel: #fff;
   --ink: #161a26;
@@ -25,6 +26,7 @@
     --wire: #6aa2ff;
     --acc: #a08dff;
     --bar: #6aa2ff;
+    --cwire: #f0a83a;
     color-scheme: dark;
   }
 }
@@ -39,6 +41,7 @@
   --wire: #6aa2ff;
   --acc: #a08dff;
   --bar: #6aa2ff;
+  --cwire: #f0a83a;
   color-scheme: dark;
 }
 
@@ -433,6 +436,8 @@ label.chk {
 .mx {
   display: grid;
   gap: 5px;
+  /* Room for the bit pin on the bottom edge. */
+  padding-bottom: 14px;
 }
 
 .bar {
@@ -464,6 +469,210 @@ input[type="number"] {
 
 .node input[type="number"] {
   background: var(--panel);
+}
+
+/* ---------- classical ---------- */
+
+.cln {
+  fill: none;
+  stroke: var(--cwire);
+  stroke-width: 2;
+  stroke-dasharray: 7 4;
+}
+
+.cw:hover .cln {
+  stroke: #ef4444;
+}
+
+/* Classical pins are small orange diamonds. */
+.cpin {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  box-sizing: border-box;
+  width: 11px;
+  height: 11px;
+  margin: 0 -5px;
+  background: var(--panel);
+  border: 2px solid var(--cwire);
+  transform: rotate(45deg);
+  cursor: crosshair;
+}
+
+.cpin::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.cpin.on {
+  background: var(--cwire);
+}
+
+/* Classical inputs on a gate's top edge, outputs on its bottom edge. */
+.cpins {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.cpins.top {
+  top: -6px;
+}
+
+.cpins.bottom {
+  bottom: -6px;
+}
+
+.cpw {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cpins.top .cpw {
+  flex-direction: column-reverse;
+}
+
+.cpins.bottom .cpw {
+  flex-direction: column;
+}
+
+.cpw .cpin {
+  margin: 0;
+  pointer-events: auto;
+}
+
+.cpw small {
+  color: var(--mut);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.node.cl {
+  width: 150px;
+}
+
+.node.cl .rw input,
+.node.cl select {
+  font: inherit;
+  width: 100%;
+  min-width: 0;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.node.cl .ns {
+  width: 100%;
+  accent-color: var(--cwire);
+}
+
+.node.cl .cv {
+  color: var(--ink);
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.node.obs {
+  width: 230px;
+}
+
+.node.opt {
+  width: 200px;
+}
+
+.node.cl textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font: 12px ui-monospace, Consolas, monospace;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.node.cl .hint {
+  margin: 0;
+  padding: 0 8px 6px;
+  color: var(--mut);
+  font-size: 11px;
+}
+
+.node.cl .cv.err {
+  color: #ef4444;
+  font-family: inherit;
+  white-space: normal;
+}
+
+.node.cl .pval {
+  color: var(--ink);
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.pr.ob {
+  flex-wrap: wrap;
+}
+
+.pr.ob button {
+  flex: 1;
+}
+
+.pr.ob label {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.node.opt .run {
+  background: var(--cwire);
+  border-color: var(--cwire);
+  color: #fff;
+}
+
+.chart {
+  width: 100%;
+  height: 48px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: visible;
+}
+
+.chart polyline {
+  fill: none;
+  stroke: var(--cwire);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart text {
+  fill: var(--mut);
+  font-size: 8px;
+}
+
+#toast {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  z-index: 6;
+  max-width: min(520px, calc(100% - 32px));
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px #0004;
+}
+
+#toast[hidden] {
+  display: none;
 }
 
 /* ---------- custom gates ---------- */

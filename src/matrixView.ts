@@ -3,7 +3,7 @@ import { nodeTitle, pinLabels } from './custom';
 import { $, canvas, escapeHtml } from './dom';
 import { blockMatrix, formatComplex, hasMatrix, reverseQubitOrder, type Complex } from './matrix';
 import { phaseColor } from './phase';
-import { nodeById } from './state';
+import { editor, nodeById } from './state';
 import { viewListeners } from './viewport';
 
 const ORDER_KEY = 'qb-matrix-order';
@@ -79,12 +79,17 @@ export function renderMatrix(): void {
   const pins = pinLabels(node).ins.map((l, k) => l || `pin ${k}`);
   const bits = pins.length;
   const size = 1 << bits;
-  const raw = bits <= MAX_QUBITS ? blockMatrix(node) : null;
+  // A θ arriving on a classical wire overrides the typed angle.
+  const wired = editor.sim?.angles.get(node.id);
+  const varies = wired != null && Number.isNaN(wired);
+  const raw = bits <= MAX_QUBITS && !varies ? blockMatrix({ ...node, p: wired ?? node.p }) : null;
   const order = textbook ? pins : [...pins].reverse();
 
   let body: string;
   if (bits > MAX_QUBITS) {
     body = `<p class="mut">Too large to show: ${size}×${size}.</p>`;
+  } else if (varies) {
+    body = '<p class="mut">Its angle differs between measurement branches, so there is no single matrix.</p>';
   } else if (!raw) {
     body = '<p class="mut">Not unitary: this gate collapses a measurement, so it has no single matrix.</p>';
   } else {
@@ -92,6 +97,7 @@ export function renderMatrix(): void {
       table(textbook ? reverseQubitOrder(raw) : raw, bits) +
       (bits > 1 ? `<p class="cap">Basis |${order.map(escapeHtml).join(', ')}⟩</p>` : '') +
       (bits > TEXT_QUBITS ? '<p class="cap">Hover a cell for its value.</p>' : '') +
+      (node.cond ? '<p class="cap">Applied only when its “if” value is non-zero; otherwise nothing happens.</p>' : '') +
       '<p class="cap">Colour = phase, strength = magnitude.</p>';
   }
 

@@ -2,12 +2,12 @@ import { defs, type CustomDef } from './custom';
 import { $, escapeHtml } from './dom';
 import { EXAMPLES, opsToGraph, registerExampleGates, type Example } from './examples';
 import { gatesChanged, onGatesChanged } from './gateStore';
-import { addNode, alignInput, clearAll } from './nodes';
+import { addNode, alignInput, clearAll, setPosition } from './nodes';
 import { refresh } from './render';
 import { deleteGate, enterGate, exitAllGates, gateUsage } from './scope';
 import { loadGraph, snapshot, type Snapshot } from './snapshot';
 import { editor } from './state';
-import type { NodeData } from './types';
+import type { NodeData, Wire } from './types';
 import { fitToContent } from './viewport';
 
 const STORAGE_KEY = 'qb-lib';
@@ -56,7 +56,7 @@ export function buildExample(example: Example): void {
   clearAll();
   registerExampleGates(example);
   if (example.gates?.length) gatesChanged();
-  const graph = opsToGraph(example.qubits, example.ops, example.init);
+  const graph = opsToGraph(example.qubits, example.ops, example.init, example.links, example.setup);
   const ids = new Map<number, number>();
   let x = 150;
 
@@ -65,13 +65,21 @@ export function buildExample(example: Example): void {
       ids.set(g.id, addNode('Q', 20, 20 + g.row * ROW, { init: g.init }).id);
       continue;
     }
-    const node = addNode(g.type, x, 0, { p: g.p, def: g.def });
-    alignInput(node, 20 + g.row * ROW + 22);
+    const { p, def, cond, text, vals, goal, steps } = g;
+    const node = addNode(g.type, x, 20 + g.row * ROW, { p, def, cond, text, vals, goal, steps });
+    // Classical blocks (row −1) sit above the qubits, clear of their wires; gates line up with their first qubit.
+    if (g.row >= 0) alignInput(node, 20 + g.row * ROW + 22);
+    else {
+      node.y = -node.el.offsetHeight - 30;
+      setPosition(node);
+    }
     ids.set(g.id, node.id);
     x += node.el.offsetWidth + 46;
   }
 
-  for (const w of graph.wires) editor.wires.push({ a: ids.get(w.a)!, ai: w.ai, b: ids.get(w.b)!, bi: w.bi });
+  const remap = (w: Wire): Wire => ({ a: ids.get(w.a)!, ai: w.ai, b: ids.get(w.b)!, bi: w.bi });
+  editor.wires.push(...graph.wires.map(remap));
+  editor.cwires.push(...graph.cwires.map(remap));
   fitToContent();
   refresh();
 }

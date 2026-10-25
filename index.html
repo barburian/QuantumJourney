@@ -16,11 +16,13 @@
           <input id="gname" aria-label="Gate name" />
         </div>
         <div id="mxp" hidden></div>
+        <div id="toast" role="status" hidden></div>
         <div id="hint">
           Click a gate to chain it onto the selected block. Drag pin to pin to wire. Drag the
           background to pan, scroll to zoom. Drop a Probe on a wire to inspect it. Wires: thickness =
           P(1), colour = phase, glow = entangled. Shift-click or shift-drag to select several blocks, Ctrl+G
-          to make them a gate, double-click a gate to edit it. ⊞ on a gate shows its matrix.
+          to make them a gate, double-click a gate to edit it. ⊞ on a gate shows its matrix. Orange wires
+          carry classical values: drop one on a gate to make it conditional.
         </div>
       </div>
       <aside id="lib">
