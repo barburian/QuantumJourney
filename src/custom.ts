@@ -168,13 +168,13 @@ export function groupNodes(
 /* ---------- expansion for simulation ---------- */
 
 /** A block being expanded; `sign` flips an angle that arrives on a classical wire. */
-type Local = NodeData & { sign?: number };
+export type Local = NodeData & { sign?: number };
 
 /**
  * The inverse of one block. Quantum wires are reversed separately, so In and
  * Out swap roles; classical blocks and wires stay as they are.
  */
-function invert(n: Local): Local {
+export function invert(n: Local): Local {
   switch (n.type) {
     case 'S': return { ...n, type: 'P', p: -0.5 };
     case 'T': return { ...n, type: 'P', p: -0.25 };

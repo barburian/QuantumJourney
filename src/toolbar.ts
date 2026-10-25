@@ -1,4 +1,5 @@
 import { $ } from './dom';
+import { toggleExport } from './exportView';
 import { isGateType } from './gates';
 import { chain, removeNodes } from './nodes';
 import { renderGatePalette } from './palette';
@@ -23,7 +24,8 @@ export function initToolbar(): void {
     '<label class="chk" title="Wire thickness shows P(1), colour shows phase, a glow marks entanglement">' +
     '<input type="checkbox" id="live" checked>Live wires</label>' +
     '<button class="p" id="zo" title="Zoom out">−</button><button class="p" id="zi" title="Zoom in">+</button>' +
-    '<button class="p" id="ft">Fit</button><button class="p" id="clr">Clear</button></div>';
+    '<button class="p" id="ft">Fit</button><button class="p" id="clr">Clear</button>' +
+    '<button class="p" id="ex" title="The circuit as OpenQASM 3 or Qiskit code">Export</button></div>';
   renderGatePalette();
 
   palette.addEventListener('dragstart', (e) => {
@@ -54,6 +56,7 @@ export function initToolbar(): void {
     fitToContent();
     drawWires();
   });
+  $('#ex').addEventListener('click', toggleExport);
   // Inside a custom gate this keeps its Inputs and Outputs blocks.
   $('#clr').addEventListener('click', () => removeNodes([...editor.nodes]));
 }

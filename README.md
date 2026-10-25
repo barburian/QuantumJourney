@@ -20,6 +20,8 @@ simulator.
 - **Variational algorithms (VQE, QAOA)**: an *Expectation* block measures ⟨H⟩ for a Hamiltonian you
   type, and an *Optimizer* block tunes rotation angles to minimise or maximise it, with a live cost
   chart
+- **Export** to OpenQASM 3 or Qiskit (Python): custom gates become gate definitions, measured bits
+  drive `if` statements; copy the code or download it as a file
 - **Matrices**: the ⊞ button on any gate, custom ones included, shows its unitary matrix, updated
   live as you edit
 - Example circuits (Bell, GHZ, Deutsch, Deutsch–Jozsa, teleportation, shared angle, Grover, Grover ×N, QFT,
@@ -86,6 +88,13 @@ The build uses relative paths, so `dist/` can be hosted from any folder (e.g. Gi
     so far. *rate* is the step size, *steps* the most steps per run; **Reset** picks a random start.
   - The *VQE: H₂ molecule* example reaches the ground energy −1.857 Ha; *QAOA MaxCut* reaches
     ⟨cut⟩ = 3 on a 4-node ring, with the two maximum cuts as the most likely outcomes.
+- **Export** (toolbar) shows the circuit as OpenQASM 3 or as a Qiskit program, updated as you edit;
+  **Copy** or **Download** it. Qubit k is the k-th Qubit block, and each measurement gets its own
+  classical bit. Custom gates become `gate` definitions (with `inv @`/`ctrl @`, or `.inverse()`/
+  `.control(1)` in Qiskit) and repeats are written out; gates that measure are written out inline.
+  Number, Math and Optimizer values are exported as they are now, and conditions on measured bits
+  (including xor/and/or/not) become `if` statements. Anything that can't be exported is listed as a
+  note at the top of the file. The Qiskit code needs Qiskit 1.0 or newer.
 - Hover or select a gate and press **⊞** (top right) to see its matrix; cell colour is the phase.
   *Pin 0 last* matches the results panel (pin 0 is the rightmost bit); *Pin 0 first* is the usual
   textbook order. Up to 4 qubits show numbers, 5–6 qubits colours only (hover for values).
@@ -115,6 +124,8 @@ src/
   hamiltonian.ts      Pauli-sum Hamiltonians and expectation values (no DOM; unit tested)
   optimizer.ts        finite-difference gradients and Adam (no DOM; unit tested)
   optimizerRun.ts     running Optimizer blocks on the live circuit
+  exporter.ts         OpenQASM 3 and Qiskit export (no DOM; unit tested)
+  exportView.ts       the export panel
   matrixView.ts       the matrix panel
   palette.ts          gate buttons, including custom gates
   snapshot.ts         circuit ⇄ plain data
@@ -139,6 +150,7 @@ tests/
   classical.test.ts
   variational.test.ts
   repeat.test.ts
+  export.test.ts      every example, exported and replayed, gives the same results
 ```
 
 `quantum-blueprints v1.html` is the original single-file prototype this project was built from.

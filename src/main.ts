@@ -1,5 +1,6 @@
 import './styles.css';
 import { EXAMPLES } from './examples';
+import { initExport } from './exportView';
 import { loadStoredGates } from './gateStore';
 import { initInteraction } from './interaction';
 import { buildExample, initLibrary, renderLibrary } from './library';
@@ -13,5 +14,6 @@ initScope();
 initToolbar();
 initInteraction();
 initMatrix();
+initExport();
 renderLibrary();
 buildExample(EXAMPLES[0]);

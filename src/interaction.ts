@@ -3,6 +3,7 @@ import { link, linkClassical, reaches } from './circuit';
 import { defs, pinLabels, repeats } from './custom';
 import { $, canvas } from './dom';
 import { canBeConditional, isGateType } from './gates';
+import { closeExport, exportOpen } from './exportView';
 import { closeMatrix, matrixOpen, positionMatrix, toggleMatrix } from './matrixView';
 import { optimizerAction } from './optimizerRun';
 import {
@@ -51,7 +52,7 @@ function onPointerDown(e: PointerEvent): void {
     e.preventDefault();
     return;
   }
-  if (target.closest('.x,.mxb,input,select,textarea,button,#crumb,#mxp')) return;
+  if (target.closest('.x,.mxb,input,select,textarea,button,#crumb,#mxp,#exp')) return;
 
   const node = nodeOf(target);
   if (node) {
@@ -271,6 +272,8 @@ function onKeyDown(e: KeyboardEvent): void {
     groupSelection();
   } else if (e.key === 'Escape' && matrixOpen()) {
     closeMatrix();
+  } else if (e.key === 'Escape' && exportOpen()) {
+    closeExport();
   } else if (e.key === 'Escape' && editor.scopes.length) {
     exitGate();
   }
@@ -289,8 +292,8 @@ export function initInteraction(): void {
   canvas.addEventListener(
     'wheel',
     (e) => {
-      // The matrix panel scrolls normally.
-      if ((e.target as Element).closest('#mxp')) return;
+      // The matrix and export panels scroll normally.
+      if ((e.target as Element).closest('#mxp,#exp')) return;
       e.preventDefault();
       zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.1 : 1 / 1.1);
     },

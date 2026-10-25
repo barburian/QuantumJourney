@@ -2,6 +2,7 @@ import { defs, measures, nodeTitle, simulateCircuit } from './custom';
 import { $ } from './dom';
 import { classicalPins, GATES, INITIAL_STATES } from './gates';
 import { maxQubit, parseHamiltonian } from './hamiltonian';
+import { renderExport } from './exportView';
 import { renderMatrix } from './matrixView';
 import { renderOptimizer } from './optimizerRun';
 import { renderProbe } from './probe';
@@ -100,4 +101,5 @@ export function refresh(): void {
   renderResults(result, name ? `inside “${name}”, inputs start in |0⟩` : '');
   drawWires();
   renderMatrix();
+  renderExport();
 }

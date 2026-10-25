@@ -819,6 +819,53 @@ input[type="number"] {
   display: none;
 }
 
+/* ---------- export ---------- */
+
+#exp {
+  position: absolute;
+  z-index: 6;
+  top: 10px;
+  right: 10px;
+  width: min(580px, calc(100% - 20px));
+  max-height: calc(100% - 20px);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px #0004;
+}
+
+#exp[hidden] {
+  display: none;
+}
+
+#exp .mh {
+  flex-wrap: wrap;
+}
+
+#exp .tab.on {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: #fff;
+}
+
+#exp .code {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+  color: var(--ink);
+  white-space: pre;
+  user-select: text;
+}
+
 .mh {
   display: flex;
   gap: 8px;
