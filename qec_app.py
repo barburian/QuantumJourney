@@ -1,5 +1,6 @@
 """Minimal Streamlit GUI for qec_bridge: streamlit run app.py"""
 import json
+import re
 import warnings
 
 import streamlit as st
@@ -37,6 +38,27 @@ def load_qasm(text):
             raise  # no qasm3 importer: report the qasm2 failure
         except Exception:
             return qasm2.loads(text)  # re-raise the qasm2 error, it is the more useful one
+
+
+def label_qubits(svg):
+    """Stim timeslice SVG with a q<n> label above every qubit dot."""
+    return re.sub(r'(<circle id="qubit_dot:(\d+):\d+" cx="([\d.]+)" cy="([\d.]+)"[^>]*/>)',
+                  lambda m: f'{m[1]}<text x="{m[3]}" y="{float(m[4]) - 22}" text-anchor="middle" '
+                            f'font-family="sans-serif" font-size="13" fill="#1f5fbf">q{m[2]}</text>', svg)
+
+
+def zoomable(svg):
+    """SVG in a scrollable white box (stim draws in black, invisible on a dark theme) with a zoom slider."""
+    return f"""<style>body{{margin:0;font:14px sans-serif}} #w svg{{width:100%;height:auto;display:block}}</style>
+<div style="background:#fff;padding:6px">Zoom <input type="range" id="z" min="100" max="600" step="10" value="100">
+<span id="zv">100%</span> (or Ctrl+scroll over the diagram)</div>
+<div style="overflow:auto;height:calc(100vh - 40px);background:#fff"><div id="w" style="width:100%">{svg}</div></div>
+<script>
+const set = v => {{ v = Math.round(Math.min(600, Math.max(100, v))); z.value = v; w.style.width = v + '%'; zv.textContent = v + '%'; }};
+z.oninput = () => set(+z.value);
+addEventListener('wheel', e => {{ if (e.ctrlKey) {{ e.preventDefault(); set(+z.value * (e.deltaY < 0 ? 1.2 : 1 / 1.2)); }} }},
+                 {{ passive: false }});
+</script>"""
 
 
 st.title("qec_bridge")
@@ -82,10 +104,17 @@ if st.sidebar.button("Run", disabled=qc is None):
                               noise=None if noiseless else UnityQNoiseProfile(**kw), shots=int(shots), seed=int(seed))
             dist = None if noiseless else check_distance(res.circuit, int(target))
     except (NonCliffordGateError, NotImplementedError, ValueError, ImportError) as e:
+        st.session_state.pop("qec", None)
         st.error(f"{type(e).__name__}: {e}")
         st.stop()
+    # kept in session state so the result survives reruns from the widgets below (tick range, tabs)
+    st.session_state.qec = dict(res=res, dist=dist, target=int(target), d=d,
+                                warnings=[f"{w.category.__name__}: {w.message}" for w in caught])
+
+if "qec" in st.session_state:
+    res, dist, target, d, caught = st.session_state.qec.values()
     for w in caught:
-        st.warning(f"{w.category.__name__}: {w.message}")
+        st.warning(w)
     rep = res.report
     cols = st.columns(4)
     cols[0].metric("Detectors", res.dem.num_detectors)
@@ -99,9 +128,19 @@ if st.sidebar.button("Run", disabled=qc is None):
     if dist is not None:
         (st.success if dist >= target else st.error)(f"Measured distance {dist} vs target {int(target)}")
     # 3D viewer first: it sizes its camera on load and stays blank if it loads in a hidden tab
-    graph, svg = st.tabs(["Matching graph 3D", "Timeslice"])
+    graph, svg = st.tabs(["Matching graph 3D", "Timeslice"], key="view")
     with svg:
-        components.html(str(res.circuit.diagram("timeslice-svg")), height=600, scrolling=True)
+        n = res.circuit.num_ticks
+        ticks = st.slider("Ticks to show (fewer = bigger panels)", 0, n - 1, (0, min(n - 1, 5))) if n > 1 else None
+        diagram = label_qubits(str(res.circuit.diagram("timeslice-svg", tick=range(ticks[0], ticks[1] + 1))
+                                   if ticks else res.circuit.diagram("timeslice-svg")))
+        st.caption("● control and ⊕ target of a CNOT · **M** measure · **R** reset · **DEP₁ / DEP₂** random Pauli error "
+                   "on 1 / 2 qubits · **ERR_X** bit flip · red number = that error's probability"
+                   + (f" · q0–q{d - 1} are data qubits, q{d}–q{2 * d - 2} ancillas" if d else "")
+                   + ". Full guide: README → Timeslice.")
+        components.html(zoomable(diagram), height=650)
+        st.download_button("Download full diagram (SVG)", label_qubits(str(res.circuit.diagram("timeslice-svg"))),
+                           "timeslice.svg", "image/svg+xml", on_click="ignore")
     with graph:
         components.html(str(res.circuit.diagram("matchgraph-3d-html")), height=600)
     with st.expander("Stim circuit"):

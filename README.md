@@ -190,10 +190,18 @@ How to read it: the decoder sees which detectors fired and picks the most likely
 
 The noisy circuit drawn as a comic strip: one panel per time step (`TICK`), showing what every qubit does during that step and which noise hits it. Use it to check gate ordering, see where the noise lands and spot qubits sitting idle.
 
+**Controls**
+
+* **Ticks to show:** picks the range of time steps to draw. It defaults to the first 6, which is one round of the d = 3 repetition code. Fewer ticks means bigger panels.
+* **Zoom** slider above the diagram (100–600%), or **Ctrl+scroll** over it. Scroll or drag the scrollbars to move around.
+* **Download full diagram (SVG):** every tick in one file. Open it in a browser tab and use the browser's own zoom for a full-screen view.
+* The legend above the diagram repeats the symbol meanings. For the repetition code it also says which qubits are data and which are ancillas.
+* Results stay on the page after Run, so changing these controls doesn't rerun the simulation. They update when you press Run again.
+
 **Layout**
 
 * Panels are labelled **Tick 0, Tick 1, …** (the label runs vertically down the panel's right edge). They go **left to right, then down to the next row**, five per row.
-* Inside a panel, each small black dot is a **qubit**, placed left to right as q0, q1, q2, …. The circuit gives no physical layout, so the qubits sit on a line in index order. In the repetition code with d = 3, q0–q2 are the data qubits and q3–q4 are the ancillas.
+* Inside a panel, each small black dot is a **qubit**, labelled in blue and placed left to right as q0, q1, q2, …. The circuit gives no physical layout, so the qubits sit on a line in index order. In the repetition code with d = 3, q0–q2 are the data qubits and q3–q4 are the ancillas.
 * Each step's length is set by its slowest operation (see the durations under *Noise*), so steps don't all take the same real time. A step with a measurement lasts 10 µs, and one with only gates lasts 0.2 µs.
 
 **Symbols**

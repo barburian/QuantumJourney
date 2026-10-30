@@ -18,6 +18,20 @@ def test_default_run():
     assert any(m.label == "Detectors" for m in at.metric)
 
 
+def test_results_survive_rerun_and_timeslice_labels():
+    at = AppTest.from_file(str(Path(__file__).parent.parent / "qec_app.py")).run(timeout=60)
+    at.sidebar.number_input[-3].set_value(200)  # shots
+    at.sidebar.button[0].click().run(timeout=60)
+    at.slider[-1].set_value((2, 4)).run(timeout=60)  # tick range: a rerun without pressing Run
+    assert not at.exception
+    assert at.subheader[0].value == "Logical error rate"
+
+    from qec_app import label_qubits
+    res = compile_qec(repetition_code(3, 1)[0], observables=[[0]])
+    svg = label_qubits(str(res.circuit.diagram("timeslice-svg")))
+    assert all(f">q{q}</text>" in svg for q in range(5))
+
+
 def test_builder_handoff():
     """What blueprints_app.py stores when the builder's "Send to QEC" button posts a circuit."""
     at = AppTest.from_file(str(Path(__file__).parent.parent / "qec_app.py"))
