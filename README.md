@@ -188,7 +188,60 @@ How to read it: the decoder sees which detectors fired and picks the most likely
 
 #### Timeslice (tab)
 
-The noisy Stim circuit drawn one layer (`TICK`) at a time, left to right. Each panel shows the gates, the inserted noise channels, measurements and resets of that layer on the qubit grid. Use it to check gate ordering and where the noise lands.
+The noisy circuit drawn as a comic strip: one panel per time step (`TICK`), showing what every qubit does during that step and which noise hits it. Use it to check gate ordering, see where the noise lands and spot qubits sitting idle.
+
+**Layout**
+
+* Panels are labelled **Tick 0, Tick 1, …** (the label runs vertically down the panel's right edge). They go **left to right, then down to the next row**, five per row.
+* Inside a panel, each small black dot is a **qubit**, placed left to right as q0, q1, q2, …. The circuit gives no physical layout, so the qubits sit on a line in index order. In the repetition code with d = 3, q0–q2 are the data qubits and q3–q4 are the ancillas.
+* Each step's length is set by its slowest operation (see the durations under *Noise*), so steps don't all take the same real time. A step with a measurement lasts 10 µs, and one with only gates lasts 0.2 µs.
+
+**Symbols**
+
+| Symbol | Meaning |
+| --- | --- |
+| Filled black circle ● joined by a thick line to a white circle with a + (⊕) | **CNOT**: ● is the control, ⊕ the target. The line curves when the two qubits aren't neighbours. Other gates show as boxes labelled with their name (H, S, CZ, …). |
+| Black box with white **M** | **Measurement** in the Z basis. Its result goes into the measurement record that detectors and observables use. |
+| Black box with white **R** | **Reset** to \|0⟩. Ancillas are reset after each measurement so the next round starts clean. |
+| Pink box **DEP₁** | **Single-qubit depolarizing noise**: with the probability shown, the qubit gets a random X, Y or Z error. Placed after 1-qubit gates and on **idle** qubits. |
+| Pink box **DEP₂** (on both qubits, joined by a line) | **Two-qubit depolarizing noise** after a 2-qubit gate: with the probability shown, the pair gets a random two-qubit Pauli error. |
+| Pink box **ERR_X** | **Bit flip** (X error) with the probability shown. Placed **just before a measurement**, so the readout reports the wrong value, and **just after a reset**, so the reset leaves \|1⟩ instead of \|0⟩. |
+| Small **red number** under a pink box | That noise channel's probability. |
+
+Noise boxes are drawn slightly down and to the right of the operation they belong to, so you can see both.
+
+**Reading the red numbers** (default noise, so you can tell what caused each one)
+
+| Number | Where it comes from |
+| --- | --- |
+| `0.00875` on DEP₂ | Two-qubit gate error: 1.25 × (1 − f_2q) = 1.25 × 0.007 |
+| `0.0015` on DEP₁ | Single-qubit gate error: 1.5 × (1 − f_1q) |
+| `0.01` on ERR_X before M | Readout error: 1 − f_meas |
+| `0.001` on ERR_X after R | Reset error: p_reset |
+| `2e-05` on DEP₁ | Idle noise for a qubit waiting through a 0.2 µs gate step (1e-4/µs × 0.2 µs) |
+| `0.001` on DEP₁ | Idle noise for a qubit waiting through a 10 µs measurement step (1e-4/µs × 10 µs) |
+| `0.00098`, `8e-05`, `0.0001` | Idle noise for a qubit that was busy for part of the step and waited for the rest (for example 10 µs − 0.2 µs = 9.8 µs → 0.00098) |
+
+**One round of the d = 3 repetition code**, as it appears in Tick 0–5:
+
+| Tick | What happens |
+| --- | --- |
+| 0 | CNOT q0 → q3: ancilla q3 starts collecting the parity of q0 and q1 |
+| 1 | CNOT q1 → q3: q3 now holds q0 ⊕ q1 |
+| 2 | **M** q3 (with ERR_X before it), and in parallel CNOT q1 → q4. The scheduler starts the second check as soon as q1 is free. Everyone else idles for the 10 µs measurement, so their DEP₁ is 0.001. |
+| 3 | **R** q3 (with ERR_X after it), and CNOT q2 → q4: q4 now holds q1 ⊕ q2 |
+| 4 | **M** q4 |
+| 5 | **R** q4 |
+
+This repeats for each round (Ticks 6–11, 12–17). The last panel is the final readout of the data qubits, which feeds the observable and the last set of detectors. 3 rounds × 6 steps + 1 = **19 ticks**.
+
+What it does **not** show: detectors and observables (they're bookkeeping on the measurement results, not operations on qubits; see the matching graph or the Stim circuit text for those), and which noise events actually happened in a given shot. It shows where noise **can** strike, not where it did.
+
+What to look for:
+
+* **Many DEP₁ boxes at 0.001** mean qubits waiting through long measurements. Idle noise is the price of slow readout, and it is often the biggest error source after two-qubit gates.
+* **A gate in a different tick than you expected:** the noise pass moves every operation as early as its qubits allow (ASAP), and a `TICK` or barrier in the circuit stops that.
+* **Wrong target or control on a CNOT** in a circuit you built yourself is easiest to spot here. Elsewhere on the page it shows up as a red distance warning, or a "non-deterministic" error when you Run.
 
 #### Stim circuit (expander)
 
