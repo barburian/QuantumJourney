@@ -5,12 +5,12 @@ import pytest
 pytest.importorskip("streamlit")
 from streamlit.testing.v1 import AppTest
 
-from app import load_qasm, repetition_code
+from qec_app import load_qasm, repetition_code
 from qec_bridge import compile_qec
 
 
 def test_default_run():
-    at = AppTest.from_file(str(Path(__file__).parent.parent / "app.py")).run(timeout=60)
+    at = AppTest.from_file(str(Path(__file__).parent.parent / "qec_app.py")).run(timeout=60)
     at.sidebar.number_input[-3].set_value(200)  # shots
     at.sidebar.button[0].click().run(timeout=60)
     assert not at.exception
