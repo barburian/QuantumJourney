@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Quantum Blueprints</title>
+  </head>
+  <body>
+    <div id="pal"></div>
+    <div id="main">
+      <div id="cv">
+        <div id="world"><svg id="wires"></svg><div id="box" hidden></div></div>
+        <div id="crumb" hidden>
+          <button class="p" id="back" title="Save and go back (Esc)">‹ Back</button>
+          <span id="path"></span>
+          <input id="gname" aria-label="Gate name" />
+        </div>
+        <div id="mxp" hidden></div>
+        <div id="exp" hidden></div>
+        <div id="toast" role="status" hidden></div>
+        <div id="hint">
+          Click a gate to chain it onto the selected block. Drag pin to pin to wire. Drag the
+          background to pan, scroll to zoom. Drop a Probe on a wire to inspect it. Wires: thickness =
+          P(1), colour = phase, glow = entangled. Shift-click or shift-drag to select several blocks, Ctrl+G
+          to make them a gate, double-click a gate to edit it. ⊞ on a gate shows its matrix. Orange wires
+          carry classical values: drop one on a gate to make it conditional.
+        </div>
+      </div>
+      <aside id="lib">
+        <h3>Library</h3>
+        <div class="sv">
+          <input id="nm" placeholder="Name this circuit" />
+          <button class="p" id="sv">Save</button>
+        </div>
+        <div id="libl"></div>
+      </aside>
+    </div>
+    <div id="res"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
