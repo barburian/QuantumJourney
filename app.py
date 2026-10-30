@@ -93,7 +93,8 @@ if st.sidebar.button("Run", disabled=qc is None):
     st.write(f"any: {rep['any']:.4g}")
     if dist is not None:
         (st.success if dist >= target else st.error)(f"Measured distance {dist} vs target {int(target)}")
-    svg, graph = st.tabs(["Timeslice", "Matching graph 3D"])
+    # 3D viewer first: it sizes its camera on load and stays blank if it loads in a hidden tab
+    graph, svg = st.tabs(["Matching graph 3D", "Timeslice"])
     with svg:
         components.html(str(res.circuit.diagram("timeslice-svg")), height=600, scrolling=True)
     with graph:
