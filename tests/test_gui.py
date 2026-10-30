@@ -18,6 +18,20 @@ def test_default_run():
     assert any(m.label == "Detectors" for m in at.metric)
 
 
+def test_builder_handoff():
+    """What blueprints_app.py stores when the builder's "Send to QEC" button posts a circuit."""
+    at = AppTest.from_file(str(Path(__file__).parent.parent / "qec_app.py"))
+    at.session_state.builder_qasm = ('OPENQASM 3.0;\ninclude "stdgates.inc";\n\nqubit[2] q;\nbit[2] c;\n\n'
+                                     'cx q[0], q[1];\nc[0] = measure q[0];\nc[1] = measure q[1];\n')
+    at.session_state.builder_new = True
+    at.run(timeout=60)
+    assert at.sidebar.radio[0].value == "From circuit builder"
+    at.sidebar.number_input[-3].set_value(200)  # shots
+    at.sidebar.button[0].click().run(timeout=60)
+    assert not at.exception  # at.error holds the expected "distance 1 vs target 3": no code here
+    assert any(m.label == "Detectors" for m in at.metric)
+
+
 def test_load_qasm():
     qc, obs = repetition_code(3, 2)
     from qiskit import qasm2

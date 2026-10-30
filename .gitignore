@@ -9,3 +9,15 @@ dist/
 venv/
 ~$*.docx
 .coverage
+
+# blueprints/ (Node)
+node_modules/
+coverage/
+*.log
+*.tsbuildinfo
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

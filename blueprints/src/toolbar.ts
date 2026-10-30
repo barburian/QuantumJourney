@@ -1,4 +1,5 @@
 import { $ } from './dom';
+import { exportCircuit } from './exporter';
 import { toggleExport } from './exportView';
 import { isGateType } from './gates';
 import { chain, removeNodes } from './nodes';
@@ -7,6 +8,9 @@ import { groupSelection } from './scope';
 import { editor } from './state';
 import { canvasCenter, fitToContent, zoomAt } from './viewport';
 import { drawWires } from './wires';
+
+/** True inside the QARW Streamlit app, which embeds this page in an iframe. */
+const embedded = window.parent !== window;
 
 /** Drag-and-drop payload for a palette button: the gate type, or "Custom:<definition id>". */
 export function dragPayload(button: HTMLElement): string | undefined {
@@ -25,7 +29,9 @@ export function initToolbar(): void {
     '<input type="checkbox" id="live" checked>Live wires</label>' +
     '<button class="p" id="zo" title="Zoom out">−</button><button class="p" id="zi" title="Zoom in">+</button>' +
     '<button class="p" id="ft">Fit</button><button class="p" id="clr">Clear</button>' +
-    '<button class="p" id="ex" title="The circuit as OpenQASM 3 or Qiskit code">Export</button></div>';
+    '<button class="p" id="ex" title="The circuit as OpenQASM 3 or Qiskit code">Export</button>' +
+    (embedded ? '<button class="p" id="qec" title="Open this circuit in the QEC bridge">Send to QEC</button>' : '') +
+    '</div>';
   renderGatePalette();
 
   palette.addEventListener('dragstart', (e) => {
@@ -57,6 +63,14 @@ export function initToolbar(): void {
     drawWires();
   });
   $('#ex').addEventListener('click', toggleExport);
+  // The QARW Streamlit page listens for this and opens the QEC bridge with the circuit.
+  if (embedded)
+    $('#qec').addEventListener('click', () =>
+      window.parent.postMessage(
+        { type: 'qarw-qasm', qasm: exportCircuit('qasm', editor.nodes, editor.wires, editor.cwires) },
+        '*',
+      ),
+    );
   // Inside a custom gate this keeps its Inputs and Outputs blocks.
   $('#clr').addEventListener('click', () => removeNodes([...editor.nodes]));
 }

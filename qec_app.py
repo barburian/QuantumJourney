@@ -4,7 +4,7 @@ import warnings
 
 import streamlit as st
 import streamlit.components.v1 as components
-from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister, qasm2
+from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister, qasm2, qasm3
 
 from qec_bridge import NonCliffordGateError, UnityQNoiseProfile, check_distance, compile_qec
 
@@ -40,7 +40,10 @@ def load_qasm(text):
 
 
 st.title("qec_bridge")
-src = st.sidebar.radio("Circuit source", ["Repetition code", "Upload QASM"])
+if st.session_state.pop("builder_new", False):  # just sent from the circuit builder
+    st.session_state.src = "From circuit builder"
+sources = ["Repetition code", "Upload QASM"] + (["From circuit builder"] if "builder_qasm" in st.session_state else [])
+src = st.sidebar.radio("Circuit source", sources, key="src")
 qc = observables = detectors = None
 if src == "Repetition code":
     d = st.sidebar.select_slider("Distance d", [3, 5, 7, 9])
@@ -49,15 +52,17 @@ if src == "Repetition code":
 else:
     d = None
     st.sidebar.caption("Circuits must be Clifford and need one ClassicalRegister per round.")
-    up = st.sidebar.file_uploader("QASM file", type=["qasm"])
+    up = None if src == "From circuit builder" else st.sidebar.file_uploader("QASM file", type=["qasm"])
     obs_txt = st.sidebar.text_input("Observables (JSON list of lists of clbit indices)", "[[0]]")
     det_txt = st.sidebar.text_input("Detectors (JSON, blank = inferred)", "")
     try:
         observables = json.loads(obs_txt)
         detectors = json.loads(det_txt) if det_txt.strip() else None
-        if up is not None:
+        if src == "From circuit builder":
+            qc = qasm3.loads(st.session_state.builder_qasm)  # the builder always exports OpenQASM 3
+        elif up is not None:
             qc = load_qasm(up.getvalue().decode())
-    except (ValueError, qasm2.QASM2ParseError, ImportError) as e:
+    except (ValueError, qasm2.QASM2ParseError, qasm3.QASM3ImporterError, ImportError) as e:
         st.sidebar.error(f"Bad input: {e}")
 
 with st.sidebar.expander("Noise"):

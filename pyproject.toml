@@ -12,7 +12,7 @@ dependencies = ["qiskit>=1.0", "stim>=1.13", "pymatching>=2.0", "numpy"]
 [project.optional-dependencies]
 sim = ["sinter", "networkx"]
 test = ["pytest"]
-gui = ["streamlit"]
+gui = ["streamlit", "qiskit_qasm3_import"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
