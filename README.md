@@ -174,7 +174,17 @@ For reference, with the default noise and 10 000 shots: d = 3 gives about **0.00
 
 #### Matching graph 3D (tab)
 
-A 3D view of the decoder's graph. Each **node** is a detector, placed at (qubit position, round). Each **edge** is one possible fault and connects the detectors that fault would trip. Edges to the boundary are faults that trip only one detector, such as errors on end data qubits. Drag to rotate and scroll to zoom. The decoder's job is to explain a set of firing detectors with the cheapest set of edges. The measured distance is the shortest chain of edges connecting the boundary to itself while flipping an observable.
+A 3D view of the decoder's graph. Drag to rotate and scroll to zoom.
+
+* **Nodes (dots):** one per detector, placed at (qubit position, round). Time (rounds) runs along one axis, so a repetition code looks like a ladder: one rung per round.
+* **Lines between two dots:** one possible fault (a gate error, a measurement flip, idle noise, …) that would make exactly those two detectors fire.
+* **Lines that end in empty space:** **boundary edges**. These are faults that trip only one detector, typically errors on the qubits at the ends of the code, where there is no second check to catch them. Their far end is "the boundary", not another detector.
+* **Black lines:** faults that **don't** change the logical result. The detectors catch them, and fixing them (or not) can't make the answer wrong.
+* **Red lines:** faults that **flip a logical observable**. These are the dangerous ones: if the decoder blames the wrong set of edges, the number of red edges in its guess decides whether the corrected answer comes out right or wrong.
+
+In the repetition code with the default observable `fin[0]` (data qubit 0), only the boundary edges of qubit 0's end of the chain are red. Only errors on qubit 0 change its value, and qubit 0 sits at the edge of the code. A single edge can be drawn several times on top of itself, once for each distinct fault that has the same effect.
+
+How to read it: the decoder sees which detectors fired and picks the most likely (cheapest) set of edges that explains them. A logical error happens when the true faults and the decoder's guess together form a chain that crosses the red edges an odd number of times. The **measured distance** is the fewest edges in such a chain: a path from boundary to boundary that crosses red an odd number of times without leaving any detector firing. More rounds and a larger *d* make that path longer, and the code stronger.
 
 #### Timeslice (tab)
 
